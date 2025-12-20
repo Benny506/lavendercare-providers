@@ -1,0 +1,239 @@
+.fit-and-scroll{
+  flex: 1;
+  overflow-y: auto; /* use auto so scrollbar only shows when needed */
+  padding-bottom: 20px;
+  min-height: 0; /* crucial for flex children inside a fixed-height parent */
+}
+.fit-and-scroll-nav{
+  overflow-y: auto; /* use auto so scrollbar only shows when needed */
+  padding-bottom: 20px;
+  min-height: 0; /* crucial for flex children inside a fixed-height parent */  
+}
+
+
+
+
+
+/* font families  */
+.font-family-GT{
+  font-family: 'GT Walsheim Pro';
+}
+
+
+
+
+
+/* font weights  */
+.fw-bold{
+  font-weight: bold;
+}
+.fw-lighter{
+  font-weight: lighter;
+}
+.fw-500{
+  font-weight: 500;
+}
+.fw-600{
+  font-weight: 600;
+}
+.fw-700{
+  font-weight: 700;
+}
+.fw-800{
+  font-weight: 800;
+}
+.fw-900{
+  font-weight: 900;
+}
+
+
+
+
+
+/* text colors */
+.txt-000{
+  color: #000;
+}
+.txt-FFF{
+  color: #FFF;
+}
+.txt-F5FFFF{
+  color: #F5FFFF;
+}
+.txt-EB1C25{
+  color: #EB1C25;
+}
+.txt-737373{
+  color: #737373;
+}
+.txt-EB0000{
+  color: #EB0000;
+}
+
+
+
+
+
+/* background colors */
+.bg-000{
+  background-color: #000;
+}
+.bg-FFF{
+  background-color: #FFF;
+}
+.bg-transparent{
+  background-color: transparent;
+}
+.bg-D9D9D9{
+  background-color: #D9D9D9;
+}
+.bg-F5FFFF{
+  background-color: #F5FFFF;
+}
+.bg-141416{
+  background-color: #141416;
+}
+.bg-222222{
+  background-color: #222222;
+}
+.bg-737373{
+  background-color: #737373;
+}
+.bg-141414{
+  background-color: #141414;
+}
+
+
+
+
+
+/* text sizes  */
+.txt-8{
+  font-size: 8px;
+}
+.txt-9{
+  font-size: 9px;
+}
+.txt-10{
+  font-size: 10px;
+}
+.txt-11{
+  font-size: 11px;
+}
+.txt-12{
+  font-size: 12px;
+}
+.txt-13{
+  font-size: 13px;
+}
+.txt-14{
+  font-size: 14px;
+}
+.txt-15{
+  font-size: 15px;
+}
+.txt-16{
+  font-size: 16px;
+}
+.txt-17{
+  font-size: 17px;
+}
+.txt-18{
+  font-size: 18px;
+}
+.txt-19{
+  font-size: 19px;
+}
+.txt-20{
+  font-size: 20px;
+}
+.txt-21{
+  font-size: 21px;
+}
+.txt-22{
+  font-size: 22px;
+}
+.txt-23{
+  font-size: 23px;
+}
+.txt-24{
+  font-size: 24px;
+}
+.txt-25{
+  font-size: 25px;
+}
+.txt-26{
+  font-size: 26px;
+}
+.txt-27{
+  font-size: 27px;
+}
+.txt-28{
+  font-size: 28px;
+}
+.txt-29{
+  font-size: 29px;
+}
+.txt-30{
+  font-size: 30px;
+}
+.txt-31{
+  font-size: 31px;
+}
+.txt-32{
+  font-size: 32px;
+}
+.txt-33{
+  font-size: 33px;
+}
+.txt-34{
+  font-size: 34px;
+}
+.txt-35{
+  font-size: 35px;
+}
+.txt-36{
+  font-size: 36px;
+}
+.txt-37{
+  font-size: 37px;
+}
+.txt-38{
+  font-size: 38px;
+}
+.txt-39{
+  font-size: 39px;
+}
+.txt-40{
+  font-size: 40px;
+}
+.txt-41{
+  font-size: 41px;
+}
+.txt-42{
+  font-size: 42px;
+}
+.txt-43{
+  font-size: 43px;
+}
+.txt-44{
+  font-size: 44px;
+}
+.txt-45{
+  font-size: 45px;
+}
+.txt-46{
+  font-size: 46px;
+}
+.txt-47{
+  font-size: 47px;
+}
+.txt-48{
+  font-size: 48px;
+}
+.txt-49{
+  font-size: 49px;
+}
+.txt-50{
+  font-size: 50px;
+}
