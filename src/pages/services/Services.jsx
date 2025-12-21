@@ -78,7 +78,7 @@ export default function Services() {
     });
 
     return (
-        <div className="flex flex-col gap-6 py-6 px-0 md:px-6">
+        <div className="flex flex-col gap-6">
 
             {/* ---------------- Header ---------------- */}
             <div className="bg-white rounded-2xl border p-5 flex flex-col lg:flex-row gap-4 justify-between">

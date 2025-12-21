@@ -157,3 +157,101 @@ export const getPublicUrl = async ({ filePath, bucket_name }) => {
     }
   }
 }
+
+export async function getSignedUploadUrl({ id, bucket_name, ext }) {
+  try {
+    const { result, errorMsg } = await requestApi({
+      url: "https://tzsbbbxpdlupybfrgdbs.supabase.co/functions/v1/create-upload-url",
+      method: "POST",
+      data: {
+        id,
+        bucket_name,
+        ext
+      },
+    });
+
+    if (errorMsg) {
+      console.log(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    return result;
+
+  } catch (error) {
+    console.log(error);
+    return { signedUrl: null };
+  }
+}
+
+export async function uploadAsset({ file, id, bucket_name, ext }) {
+  try {
+    // ✅ If multiple files are provided, upload all in parallel
+    if (Array.isArray(file)) {
+      const results = await Promise.all(
+        file.map(async (f, i) => {
+          const { signedUrl, filePath } = await getSignedUploadUrl({
+            id: `${id}`, // make path unique
+            bucket_name,
+            ext: f.name?.split('.').pop() || ext,
+          });
+
+          if (!signedUrl || !filePath)
+            throw new Error("Error getting signed upload URL");
+
+          const uploadRes = await fetch(signedUrl, {
+            method: "PUT",
+            headers: {
+              "Content-Type": f.type || "application/octet-stream",
+            },
+            body: f,
+          });
+
+          if (!uploadRes.ok) throw new Error(`Upload failed for file ${f.name || i}`);
+
+          return filePath;
+        })
+      );
+
+      return {
+        filePaths: results,
+        error: null,
+      };
+    }
+
+    // ✅ Otherwise, handle single upload as before
+    const { signedUrl, filePath } = await getSignedUploadUrl({ id, bucket_name, ext });
+
+    if (!signedUrl || !filePath) throw new Error("Error getting signed upload url");
+
+    const uploadRes = await fetch(signedUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+      body: file,
+    });
+
+    if (!uploadRes.ok) {
+      console.log(uploadRes)
+      throw new Error("Upload failed");
+    }
+
+    return {
+      filePath,
+      error: null,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      filePath: null,
+      error: "Error uploading asset",
+    };
+  }
+}
+
+export const getPublicImageUrl = ({ path, bucket_name }) =>
+  path?.startsWith("https")
+    ?
+    path
+    :
+    `https://tzsbbbxpdlupybfrgdbs.supabase.co/storage/v1/object/public/${bucket_name}/${path}`;

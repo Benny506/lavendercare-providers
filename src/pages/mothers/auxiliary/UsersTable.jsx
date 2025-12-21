@@ -95,7 +95,7 @@ export default function UsersTable({ users = [] }) {
                         variant="ghost"
                         className="text-primary-600"
                         onClick={() =>
-                            navigate("/chat", { state: { userId: row.id } })
+                            navigate("/mothers/single-mother/booking-chat", { state: { user: row } })
                         }
                     >
                         Chat

@@ -86,7 +86,7 @@ export default function ServiceDetails() {
   /* ------------------ UI ------------------ */
 
   return (
-    <div className="w-full min-h-screen px-0 md:px-6 py-6 space-y-8">
+    <div className="w-full min-h-screen space-y-8">
 
       {/* PAGE HEADER */}
       <div className="w-full flex flex-col gap-6 mb-8">

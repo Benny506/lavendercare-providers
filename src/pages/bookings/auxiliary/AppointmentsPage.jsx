@@ -90,7 +90,7 @@ const AppointmentsPage = ({ appointments = [] }) => {
     );
 
     return (
-        <div className="mt-4">
+        <div className="">
             {/* ✅ Summary Boxes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 overscroll-x-none">
                 {Object.keys(bookingsCount).map((status, index) => {

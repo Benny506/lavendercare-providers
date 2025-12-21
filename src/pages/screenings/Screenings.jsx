@@ -13,6 +13,7 @@ import useApiReqs from "@/hooks/useApiReqs";
 import ScreeningsTable from "./auxiliary/ScreeningsTable";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectLabel, SelectValue } from "@/components/ui/select";
+import { DateTime } from "luxon";
 
 
 const MENTAL_HEALTH_TEST_TYPES = [
@@ -35,6 +36,8 @@ const weekFilters = [
 ]
 
 function isDateInRange({ dateToCheck, range }) {
+    if (range === null) return true
+
     if (!dateToCheck || typeof dateToCheck !== "string") {
         return false; // Prevent invalid input crash
     }
@@ -97,7 +100,7 @@ const Screenings = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [showWeekFilter, setShowWeekFilter] = useState(false)
     const [selectedType, setSelectedType] = useState("All");
-    const [selectedWeekFilter, setSelectedWeekFilter] = useState(weekFilters[0])
+    const [selectedWeekFilter, setSelectedWeekFilter] = useState(weekFilters[0].keyword)
 
     useEffect(() => {
         getScreenings({
@@ -119,7 +122,7 @@ const Screenings = () => {
 
         const matchesSearch = user_profile?.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesFilter = selectedType === "All" || test_type === selectedType;
-        const datesFilter = selectedWeekFilter.title === 'All' || isDateInRange({ dateToCheck: checkDateISO, range: selectedWeekFilter.keyword })
+        const datesFilter = selectedWeekFilter === null || isDateInRange({ dateToCheck: checkDateISO, range: selectedWeekFilter })
 
         return matchesSearch && matchesFilter && datesFilter;
     });
@@ -140,47 +143,21 @@ const Screenings = () => {
             <div className=" min-h-screen">
                 {/* Top section with time filter and export */}
                 <div className="flex justify-between items-center mb-6">
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowWeekFilter(prev => !prev)}
-                            className="flex cursor-pointer items-center gap-2 bg-white px-4 py-2 rounded-lg border"
-                        >
-                            <span className="text-gray-700 font-medium">{selectedWeekFilter.title}</span>
-                            <ChevronDown className="w-4 h-4 text-gray-500" />
-                        </button>
-
-                        {showWeekFilter && (
-                            <div className="absolute right-0 mt-2 w-72 bg-white border rounded-lg shadow-lg p-4 z-50">
-                                <h4 className="font-semibold mb-2">Filter</h4>
-
-                                {/* Screening Type Pills */}
-                                <label className="block text-sm text-gray-600 mb-2">Past days</label>
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                    {weekFilters.map((filter) => (
-                                        <button
-                                            key={filter.title}
-                                            onClick={() => {
-                                                setSelectedWeekFilter(filter)
-                                                setShowWeekFilter(false)
-                                            }}
-                                            className={`px-3 py-1 rounded-full border text-sm ${selectedWeekFilter.title === filter.title
-                                                ? "bg-purple-600 text-white border-purple-600"
-                                                : "border-gray-400 text-gray-700 hover:bg-gray-50"
-                                                }`}
-                                        >
-                                            {filter.title}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* <Button
-                                    className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm"
-                                    onClick={() => setShowFilter(false)}
-                                >
-                                    Apply
-                                </Button> */}
-                            </div>
-                        )}
+                    <div className="bg-white">
+                        <Select onValueChange={setSelectedWeekFilter} defaultValue={null}>
+                            <SelectTrigger className="py-5">
+                                <SelectValue placeholder="Filter by: All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {
+                                    weekFilters.map(filter => {
+                                        return (
+                                            <SelectItem value={filter.keyword} className={'capitalize'}> {filter.title} </SelectItem>
+                                        )
+                                    })
+                                }
+                            </SelectContent>
+                        </Select>
                     </div>
 
                     <Button onClick={handleExportBtnClick} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-black rounded-md hover:bg-gray-50">

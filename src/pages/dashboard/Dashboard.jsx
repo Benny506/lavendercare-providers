@@ -59,7 +59,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="py-4 md:p-4 overflow-x-hidden space-y-6">
+    <div className="overflow-x-hidden space-y-6">
 
       {/* ------------------ Stats Section ------------------ */}
       <motion.div
@@ -85,7 +85,7 @@ export default function Dashboard() {
               dashboardStats.virtualBookingsCount
             ),
             newCount: dashboardStats.newVirtualBookingsCount,
-            link: "/consultations",
+            link: "/bookings",
           },
           {
             title: "Total Screenings",
@@ -93,7 +93,7 @@ export default function Dashboard() {
             text: formatNumberWithCommas(
               dashboardStats.screeningsCount
             ),
-            link: "screenings",
+            link: "/screenings",
           },
           {
             title: "High-Risk Alerts",
@@ -101,7 +101,7 @@ export default function Dashboard() {
             text: formatNumberWithCommas(
               dashboardStats.HRA_Count
             ),
-            link: "high-risk-alerts",
+            link: "/screenings",
           },
         ].map((info, i) => {
           const { link, title, text, count, newCount } = info;

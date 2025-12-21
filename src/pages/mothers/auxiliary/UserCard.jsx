@@ -99,7 +99,7 @@ export default function UserCard({ user }) {
                 <Button
                     variant="ghost"
                     className="rounded-full text-primary-600"
-                    onClick={() => navigate(`/chat/${id}`)}
+                    onClick={() => navigate(`/mothers/single-mother/booking-chat`, { state: { user } })}
                 >
                     <Icon icon="ph:chat-circle-dots" className="text-xl" />
                 </Button>

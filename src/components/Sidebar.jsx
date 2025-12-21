@@ -10,6 +10,7 @@ import { clearUserDetails, getUserDetailsState } from '@/redux/slices/userDetail
 import supabase from '@/database/dbInit';
 import { appLoadStart, appLoadStop } from '@/redux/slices/appLoadingSlice';
 import { toast } from 'react-toastify';
+import { getPublicImageUrl } from '@/lib/requestApi';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const dispatch = useDispatch()
@@ -22,57 +23,59 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const user = useSelector(state => getUserDetailsState(state).user)
 
   const userLogout = async () => {
-      try {
+    try {
 
-          dispatch(appLoadStart())
+      dispatch(appLoadStart())
 
-          dispatch(clearUserDetails())
-          await supabase.auth.signOut()
+      dispatch(clearUserDetails())
+      await supabase.auth.signOut()
 
-          dispatch(appLoadStop())
+      dispatch(appLoadStop())
 
-          toast.success("Logged out")
-          
-      } catch (error) {
-          console.log(error)
-          toast.error("Error logging you out")
-      }
-  }     
+      toast.success("Logged out")
+
+    } catch (error) {
+      console.log(error)
+      toast.error("Error logging you out")
+    }
+  }
 
   const activeNav =
     pathname.includes('service')
-    ?
+      ?
       'services'
-    :
-    pathname.includes('bookings')
-    ?
-      'bookings'
-    :
-    pathname.includes('inbox')
-    ?
-      'inbox'
-    :
-    pathname.includes('wallet')
-    ?
-      'wallet'
-    :
-    pathname.includes("settings")
-    ?
-      'settings'
-    :
-    pathname.includes("support")
-    ?
-      'support'
-    :
-    pathname.includes("mothers")
-    ?
-      'mothers'
-    :
-    pathname.includes("screenings")
-    ?
-      'screenings'
-    :    
-      'dashboard'
+      :
+      pathname.includes('bookings')
+        ?
+        'bookings'
+        :
+        pathname.includes('inbox')
+          ?
+          'inbox'
+          :
+          pathname.includes('wallet')
+            ?
+            'wallet'
+            :
+            pathname.includes("settings")
+              ?
+              'settings'
+              :
+              pathname.includes("support")
+                ?
+                'support'
+                :
+                pathname.includes("mothers")
+                  ?
+                  'mothers'
+                  :
+                  pathname.includes("screenings")
+                    ?
+                    'screenings'
+                    :
+                    'dashboard'
+
+  const imageUrl = getPublicImageUrl({ path: profile?.profile_img, bucket_name: 'user_profiles' })
 
   return (
     <aside className={`fixed h-full overflow-y-auto md:h-max lg:h-screen max-w-max flex flex-col bg-white border-r border-[#E9E9E9] justify-between mt-0.5 transform transition-transform duration-300 z-50 ${isOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static`}>
@@ -86,7 +89,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
         {/* Navigation */}
         <nav className="flex flex-col gap-2 px-8">
           {SidebarItems.map((item) => {
-            
+
             const active = activeNav === item.label.toLowerCase() ? true : false
 
             const handleItemClick = () => {
@@ -111,7 +114,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 </span>
                 <span className="font-medium text-md">{item.label}</span>
               </div>
-            )}
+            )
+          }
           )}
         </nav>
 
@@ -165,7 +169,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               />
             </span>
             <span className="font-medium text-md">Contact support</span>
-          </div>          
+          </div>
         </div>
       </div>
 
@@ -173,14 +177,14 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       <div className="px-6 py-5 pb-15 flex items-center gap-4 border-t border-[#E9E9E9]">
         {
           profile?.profile_img
-          ?
-            <img 
-              src={profile?.profile_img}
+            ?
+            <img
+              src={imageUrl}
               alt='Profile img'
               className='rounded-full h-8 w-8'
             />
-          :
-            <></>        
+            :
+            <></>
         }
         <div className="flex-1">
           <div className="font-bold text-md text-[#2D1A4A]">{profile?.business_name}</div>

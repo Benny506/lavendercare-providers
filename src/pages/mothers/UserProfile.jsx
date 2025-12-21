@@ -102,7 +102,7 @@ export default function UserProfile() {
 
 
     return (
-        <div className="min-h-screen bg-grey-50 p-6 md:p-12 space-y-8">
+        <div className="min-h-screen bg-grey-50 p-6 md:p-12 space-y-8 rounded-lg">
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">

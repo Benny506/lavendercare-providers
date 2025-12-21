@@ -79,14 +79,14 @@ export default function Users() {
         <div className="space-y-6">
 
             {/* ------------------------------ Header ------------------------------ */}
-            <section className="flex flex-wrap items-center justify-between gap-4">
+            {/* <section className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Mothers</h1>
                     <p className="text-sm text-gray-500">
                         Manage and communicate with moms that have booked any of your service before
                     </p>
                 </div>
-            </section>
+            </section> */}
 
             {/* ------------------------------- Stats ------------------------------- */}
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

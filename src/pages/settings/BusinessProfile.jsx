@@ -6,14 +6,14 @@ import { useDispatch, useSelector } from "react-redux";
 import { getUserDetailsState, setUserDetails } from "@/redux/slices/userDetailsSlice";
 import { ErrorMessage, Formik } from "formik";
 import * as yup from 'yup'
-import { Eye, EyeOff, MapPinHouse } from "lucide-react";
+import { Eye, EyeOff, MapPinHouse, User } from "lucide-react";
 import { countries } from "@/constants/constant";
 import ErrorMsg1 from "@/components/ErrorMsg1";
 import { useEffect, useRef, useState } from "react";
 import { appLoadStart, appLoadStop } from "@/redux/slices/appLoadingSlice";
 import supabase from "@/database/dbInit";
 import { toast } from "react-toastify";
-import { cloudinaryUpload, onRequestApi } from "@/lib/requestApi";
+import { cloudinaryUpload, getPublicImageUrl, onRequestApi, uploadAsset } from "@/lib/requestApi";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
@@ -27,7 +27,7 @@ const BusinessProfile = () => {
     const profileInputRef = useRef(null)
 
     const [apiReqs, setApiReqs] = useState({ isLoading: false, data: null, errorMsg: null })
-    const [profileImgPreview, setProfileImgPreview] = useState(null)
+    const [profileImgPreview, setProfileImgPreview] = useState({ file: null, preview: null })
     const [passwordVisible, setPasswordVisible] = useState(false)
 
     useEffect(() => {
@@ -43,11 +43,11 @@ const BusinessProfile = () => {
                 editProfile({ requestInfo })
             }
 
-            if(type == 'editPhoneNumber'){
+            if (type == 'editPhoneNumber') {
                 editPhoneNumber({ requestInfo })
             }
 
-            if(type == 'editEmail'){
+            if (type == 'editEmail') {
                 onRequestApi({
                     requestInfo,
                     successCallBack: editEmailSuccess,
@@ -57,14 +57,14 @@ const BusinessProfile = () => {
         }
     }, [apiReqs])
 
-    const editEmailSuccess = async({ result }) => {
+    const editEmailSuccess = async ({ result }) => {
         try {
 
             const { newSession } = result
 
             const { data, error } = await supabase.auth.setSession(newSession);
 
-            if(error){
+            if (error) {
                 console.error(error)
                 throw new Error()
             }
@@ -81,7 +81,7 @@ const BusinessProfile = () => {
             toast.success("Email successfully updated")
 
             return;
-            
+
         } catch (error) {
             console.log(error)
             return editEmailFailure({ errorMsg: 'Something went wrong! Try again. Are you sure those that is the right password?' })
@@ -111,7 +111,7 @@ const BusinessProfile = () => {
                 .select()
                 .single()
 
-            if(error) {
+            if (error) {
                 console.error(error)
                 throw new Error()
             }
@@ -124,7 +124,7 @@ const BusinessProfile = () => {
             toast.success("Phone number updated")
 
             return;
-            
+
         } catch (error) {
             console.error(error)
             return editPhoneNumberFailure({ errorMsg: 'Something went wrong! Try again. That phone number might be taken' })
@@ -141,7 +141,7 @@ const BusinessProfile = () => {
         try {
 
             const { data, error } = await supabase
-                .from('vendor_profiles')
+                .from('providers')
                 .update(requestInfo)
                 .eq('id', profile?.id)
                 .select()
@@ -185,16 +185,12 @@ const BusinessProfile = () => {
         return
     }
 
-    const uploadFiles = async ({ files, requestBody }) => {
+    const uploadFiles = async ({ file, requestBody }) => {
         try {
 
-            const { result } = await cloudinaryUpload({ files })
+            const { filePath, error } = await uploadAsset({ file, id: user?.id, bucket_name: 'user_profiles', ext: 'png' })
 
-            if (!result) throw new Error();
-
-            const profile_img = result[0]?.secure_url
-
-            if (!profile_img) throw new Error();
+            if (!filePath) throw new Error()
 
             toast.success("Image uploaded")
 
@@ -205,7 +201,7 @@ const BusinessProfile = () => {
                     type: 'editProfile',
                     requestInfo: {
                         ...requestBody,
-                        profile_img
+                        profile_img: filePath
                     }
                 }
             })
@@ -220,15 +216,15 @@ const BusinessProfile = () => {
 
     const togglePasswordVisibility = () => setPasswordVisible(prev => !prev)
 
+    const imageUrl = getPublicImageUrl({ path: profile?.profile_img, bucket_name: 'user_profiles' })
+
     return (
         <div className="bg-grey-50 w-full rounded-lg">
             <div className="p-4 sm:p-6 max-w-full md:max-w-2xl">
                 <Formik
+                    enableReinitialize
                     validationSchema={yup.object().shape({
-                        country_code: yup.string(),
-                        location: yup.string(),
-                        bio: yup.string().max(400, "Must not be more than 400 characters"),
-                        working_condition: yup.string(),
+                        username: yup.string(),
                         profile_img: yup
                             .mixed()
                             .test(
@@ -248,20 +244,17 @@ const BusinessProfile = () => {
                             )
                     })}
                     initialValues={{
-                        country_code: profile?.country_code || '',
-                        location: profile?.location || '',
-                        bio: profile?.bio || '',
-                        working_condition: profile?.working_condition || '',
-                        profile_img: profile?.profile_img || ''
+                        username: profile?.username || '',
+                        profile_img: imageUrl || ''
                     }}
                     onSubmit={values => {
                         const requestInfo = values
 
-                        if (profileImgPreview) {
+                        if (profileImgPreview?.file) {
                             delete requestInfo.profile_img
 
                             setApiReqs({ isLoading: true, errorMsg: null, data: null })
-                            uploadFiles({ files: [profileImgPreview], requestBody: requestInfo })
+                            uploadFiles({ file: profileImgPreview?.file, requestBody: requestInfo })
 
                         } else {
                             setApiReqs({
@@ -284,20 +277,20 @@ const BusinessProfile = () => {
                                         <div className="flex items-center gap-3">
                                             {/* Profile Logo */}
                                             {
-                                                (values?.profile_img || profileImgPreview)
+                                                (values?.profile_img || profileImgPreview?.preview)
                                                     ?
-                                                    <img src={profileImgPreview || values?.profile_img} alt="Profile image" className="border-grey-50 border-2 shadow-2xl w-16 h-16 sm:w-18 sm:h-18 rounded-full" />
+                                                    <img src={profileImgPreview?.preview || values?.profile_img} alt="Profile image" className="border-grey-50 border-2 shadow-2xl w-16 h-16 sm:w-18 sm:h-18 rounded-full" />
                                                     :
-                                                    <span className="text-gray-600 font-medium text-xs">Profile not set</span>
+                                                    <span className="text-gray-600 font-medium text-xs">Profile image not set</span>
                                             }
 
                                             {/* Info */}
                                             <div className="flex flex-col">
                                                 <h2 className="text-xl sm:text-2xl font-semibold text-grey-800">
-                                                    {profile?.business_name}
+                                                    {profile?.username}
                                                 </h2>
                                                 <p className="text-sm sm:text-md text-grey-500">
-                                                    {profile?.email}
+                                                    {user?.email}
                                                 </p>
                                             </div>
                                         </div>
@@ -325,7 +318,7 @@ const BusinessProfile = () => {
                                     onChange={e => {
                                         const file = e.currentTarget.files?.[0] ?? null
 
-                                        if(!file) return;
+                                        if (!file) return;
 
                                         setFieldValue("profile_img", file)
 
@@ -333,7 +326,7 @@ const BusinessProfile = () => {
                                             const reader = new FileReader()
                                             reader.onloadend = () => {
                                                 // reader.result is a base64 data-URL
-                                                setProfileImgPreview(reader.result)
+                                                setProfileImgPreview({ file, preview: reader.result })
                                             }
                                             reader.readAsDataURL(file)
 
@@ -342,115 +335,52 @@ const BusinessProfile = () => {
                                 />
 
                                 <button
+                                    onClick={() => {
+                                        setProfileImgPreview({ file: null, preview: null })
+                                        setFieldValue("profile_img", imageUrl)                                    
+                                    }}
+                                    className="cursor-pointer text-sm text-primary-500 font-bold hover:underline mb-6 flex items-center gap-1"
+                                >
+                                    <Icon icon="mdi:iconoir-cancel" width="16" height="16" />
+                                    Reset Profile-Image
+                                </button>
+                                <button
                                     onClick={() => profileInputRef.current?.click()}
                                     className="cursor-pointer text-sm text-primary-500 font-bold hover:underline mb-6 flex items-center gap-1"
                                 >
                                     <Icon icon="mdi:edit-outline" width="16" height="16" />
-                                    {profile?.profile_img ? "Update" : "Upload"} Logo
+                                    {profile?.profile_img ? "Update" : "Upload"} Profile-Image
                                 </button>
                                 <ErrorMessage name="profile_img">
                                     {errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} />}
                                 </ErrorMessage>
 
                                 {/* Form */}
-                                <form className="space-y-4">
+                                <div className="space-y-4">
                                     {/* Business Location */}
                                     <div className="flex flex-col">
                                         <label className="text-sm font-medium text-grey-700 mb-1">
-                                            Primary Business Location
+                                            Username
                                         </label>
                                         <div className="relative">
                                             <input
-                                                name="location"
-                                                value={values.location}
+                                                name="username"
+                                                value={values.username}
                                                 onChange={handleChange}
                                                 onBlur={handleBlur}
                                                 type="text"
-                                                placeholder="Enter primary business address"
+                                                placeholder="Enter Usernam"
                                                 className="border border-grey-300 rounded-lg pl-10 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 w-full"
                                             />
-                                            <MapPinHouse
+                                            <User
                                                 className="absolute left-3 top-1/2 -translate-y-1/2 text-grey-400"
                                                 size={18}
                                             />
                                         </div>
-                                        <ErrorMessage name="location">
+                                        <ErrorMessage name="username">
                                             {errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} />}
                                         </ErrorMessage>
                                     </div>
-
-                                    {/* About */}
-                                    <div className="flex flex-col">
-                                        <label className="text-sm font-medium text-grey-700 mb-1">
-                                            About
-                                        </label>
-                                        <textarea
-                                            name="bio"
-                                            value={values.bio}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                            placeholder="Tell potential clients about your company"
-                                            maxLength={400}
-                                            rows={6}
-                                            className="border border-grey-300 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none placeholder-grey-400"
-                                        />
-                                        <span className="text-xs text-grey-400 text-right mt-1">
-                                            {values.bio?.length}/400
-                                        </span>
-                                        <ErrorMessage name="bio">
-                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} />}
-                                        </ErrorMessage>
-                                    </div>
-
-                                    {/* Working Conditions */}
-                                    <div className="flex flex-col">
-                                        <label className="text-sm font-medium text-grey-700 mb-1">
-                                            Working Conditions
-                                        </label>
-                                        <textarea
-                                            name="working_condition"
-                                            value={values.working_condition}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                            placeholder=" e.g All bookings must be done via the LavenderCare app"
-                                            rows={6}
-                                            className="border border-grey-300 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none placeholder-grey-400"
-                                        />
-                                        <p className="text-xs sm:text-sm text-grey-500 m-2 text-left">
-                                            This helps potential clients understand the limitations of your services
-                                        </p>
-                                        <ErrorMessage name="working_condition">
-                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} />}
-                                        </ErrorMessage>
-                                    </div>
-
-                                    {/* Service Category */}
-                                    {/* <div className="flex flex-col">
-                                    <label className="text-sm font-medium text-grey-700 mb-1">
-                                        Service Category
-                                    </label>
-                                    <div className="relative">
-                                        <Icon
-                                            icon="iconamoon:search"
-                                            className="absolute left-3 top-1/2 -translate-y-1/2 text-grey-400 pointer-events-none"
-                                            width="18"
-                                            height="18"
-                                        />
-                                        <div className="absolute left-10 top-1/2 -translate-y-1/2 flex gap-2 pointer-events-none">
-                                            <Badge className="bg-grey-100 text-grey-700 text-xs font-medium px-2 rounded-full">
-                                                Category name
-                                            </Badge>
-                                            <Badge className="bg-grey-100 text-grey-700 text-xs font-medium px-2 rounded-full">
-                                                Category name
-                                            </Badge>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            placeholder="Type to add"
-                                            className="border border-grey-300 rounded-lg pl-32 sm:pl-[260px] pr-4 py-3 text-sm focus:outline-none w-full"
-                                        />
-                                    </div>
-                                </div> */}
 
                                     {/* Save Changes Button */}
                                     <Button
@@ -459,7 +389,7 @@ const BusinessProfile = () => {
                                     >
                                         Save Changes
                                     </Button>
-                                </form>
+                                </div>
                             </div>
                         )
                     }
@@ -472,6 +402,7 @@ const BusinessProfile = () => {
                 <div className="py-5" />
 
                 <Formik
+                    enableReinitialize
                     validationSchema={yup.object().shape({
                         phone_number: yup.string().matches(/^\d+$/, "Phone number must contain only digits"),
                         country_code: yup.string(),
@@ -563,6 +494,7 @@ const BusinessProfile = () => {
                 <div className="py-5" />
 
                 <Formik
+                    enableReinitialize
                     validationSchema={yup.object().shape({
                         email: yup.string().email("Must be a valid email address").required("Email address is required"),
                         password: yup.string().required("Password is required")
@@ -582,7 +514,7 @@ const BusinessProfile = () => {
                                     method: 'POST',
                                     data: {
                                         current_email: user?.email,
-                                        current_password: values?.password, 
+                                        current_password: values?.password,
                                         new_email: values?.email
                                     }
                                 }
@@ -630,13 +562,13 @@ const BusinessProfile = () => {
                                         />
                                         {
                                             !passwordVisible
-                                            ?
-                                                <EyeOff className="cursor-pointer absolute right-3 top-8 text-grey-800" size={16} onClick={togglePasswordVisibility} />                                        
-                                            :
+                                                ?
+                                                <EyeOff className="cursor-pointer absolute right-3 top-8 text-grey-800" size={16} onClick={togglePasswordVisibility} />
+                                                :
                                                 <Eye className="cursor-pointer absolute right-3 top-8 text-grey-800" size={16} onClick={togglePasswordVisibility} />
                                         }
                                         <ErrorMessage name={'password'}>
-                                            { errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} /> }
+                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} />}
                                         </ErrorMessage>
                                     </div>
 
@@ -651,7 +583,7 @@ const BusinessProfile = () => {
                             </div>
                         )
                     }
-                </Formik>                
+                </Formik>
             </div>
         </div>
     );

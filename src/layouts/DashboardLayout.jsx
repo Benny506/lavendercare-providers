@@ -13,10 +13,10 @@ const DashboardLayout = () => {
       <div className="flex max-h-screen overflow-hidden min-h-screen bg-primary-100 bg-img">
         <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-        <div className="fit-and-scroll flex-1 p-6 flex-col">
+        <div className="fit-and-scroll flex-1 flex-col">
           <TopBar setIsOpen={setIsOpen} />
 
-          <div className="flex-1">
+          <div className="flex-1 p-4">
             <Outlet />
           </div>
         </div>

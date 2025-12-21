@@ -1,74 +1,96 @@
-import { Icon } from "@iconify/react";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "./ui/select";
-import { useState } from "react";
-import { Menu } from "lucide-react";
+import { Menu, Bell, ChevronDown, Settings, User, HandHelping } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const TopBar = ({ setIsOpen }) => {
-    const [selectedOption, setSelectedOption] = useState("lifetime");
+
+    const navigate = useNavigate()
+
+    const pathname = useLocation().pathname.toLowerCase()
+
+    const routeMeta = [
+        {
+            key: "service",
+            title: "Services",
+            subtitle: "Manage and configure available services",
+        },
+        {
+            key: "booking",
+            title: "Bookings",
+            subtitle: "Track, review, and manage appointments",
+        },
+        {
+            key: "mother",
+            title: "Mothers",
+            subtitle: "Profiles and medical history overview",
+        },
+        {
+            key: "screening",
+            title: "Screenings",
+            subtitle: "Health screening records and results",
+        },
+        {
+            key: "setting",
+            title: "Settings",
+            subtitle: "System preferences and configurations",
+        },
+        {
+            key: "support",
+            title: "Support",
+            subtitle: "Help requests and user communication",
+        },
+    ];
+
+    const getHeaderMeta = () => {
+        const match = routeMeta.find(route => pathname.includes(route.key));
+
+        return (
+            match ?? {
+                title: "Dashboard",
+                subtitle: "Summary, analytics, and key insights",
+            }
+        );
+    };
+
+    const { title, subtitle } = getHeaderMeta()
+
     return (
-        <header className="w-full lg:px-6 md:py-2 flex flex-col items-start md:items-center justify-between gap-4 border-b-[1.5px] border-primary-100 pb-5">
-            <div className="flex justify-between w-full">
-                <div className="flex items-center gap-2">
-                    {/* Hamburger for mobile */}
+        <header className="sticky top-0 z-40 w-full bg-white/80 backdrop-blur-md border-b border-gray-200">
+            <div className="flex items-center justify-between px-4 md:px-6 py-4">
+
+                {/* Left Section */}
+                <div className="flex items-center gap-3">
+                    {/* Mobile Menu */}
                     <button
                         onClick={() => setIsOpen(true)}
-                        className="lg:hidden"
+                        className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition"
                     >
-                        <Menu size={24} />
+                        <Menu size={22} />
                     </button>
-                    {/* Left: Page Title */}
-                    <h1 className="text-2xl font-bold text-[#000000]">Overview</h1>
+
+                    {/* Title */}
+                    <div className="leading-tight">
+                        <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
+                            {title}
+                        </h1>
+                        <p className="text-sm text-gray-500 hidden md:block">
+                            {subtitle}
+                        </p>
+                    </div>
                 </div>
 
-                {/* Right: Search + Notification + Avatar */}
-                <div className="flex items-center gap-4">
-                    {/* Search Bar */}
-                    {/* <div className="hidden md:block">
-                        <Select value={selectedOption} onValueChange={setSelectedOption}>
-                            <SelectTrigger className="w-[140px] bg-grey-50 border border-grey-200 rounded-none py-5 font-extrabold text-md">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                    <SelectItem value="lifetime">Lifetime</SelectItem>
-                                    <SelectItem value="A">A</SelectItem>
-                                    <SelectItem value="B">B</SelectItem>
-                                    <SelectItem value="C">C</SelectItem>
-                                    <SelectItem value="D">D</SelectItem>
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
+                {/* Right Section */}
+                <div className="flex items-center gap-3">
+                    {/* Notifications */}
+                    <button onClick={() => navigate('/settings')} className="relative p-2 rounded-lg hover:bg-gray-100 transition">
+                        <Settings size={20} />
+                    </button>
 
-                    </div> */}
-
-                    {/* Notification Icon with Badge */}
-                    {/* <div className="relative cursor-pointer">
-                        <div className="p-2 rounded-sm border border-grey-200">
-                            <Icon icon="mdi:notifications-none" width="24" height="24" className="text-primary-500" />
-                        </div>
-                        <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-semibold w-5 h-5 flex items-center justify-center rounded-full">
-                            1
-                        </span>
-                    </div> */}
+                    {/* User */}
+                    <button onClick={() => navigate('/support')} className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition">
+                        <HandHelping size={20} />
+                    </button>
                 </div>
             </div>
-
-            {/* <div className="block md:hidden">
-                <Select value={selectedOption} onValueChange={setSelectedOption}>
-                    <SelectTrigger className="w-[140px] bg-grey-50 border border-grey-200 rounded-none py-5 font-extrabold text-md">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectGroup>
-                            <SelectItem value="lifetime">Lifetime</SelectItem>
-                            <SelectItem value="A">A</SelectItem>
-                            <SelectItem value="B">B</SelectItem>
-                            <SelectItem value="C">C</SelectItem>
-                            <SelectItem value="D">D</SelectItem>
-                        </SelectGroup>
-                    </SelectContent>
-                </Select>
-            </div> */}
         </header>
     );
 };

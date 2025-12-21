@@ -88,7 +88,7 @@ const BookingDetails = () => {
     /* ------------------ Render ------------------ */
 
     return (
-        <div className="min-h-screen px-0 md:px-6 py-6 space-y-6">
+        <div className="min-h-screen space-y-6">
 
             {/* ---------- Hero Header ---------- */}
             <motion.div

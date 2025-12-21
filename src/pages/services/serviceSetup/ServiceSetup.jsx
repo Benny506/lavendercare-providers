@@ -121,7 +121,7 @@ export default function ServiceSetup({ info = {} }) {
                     const availability = reorderDays(values.availability);
 
                     return (
-                        <div className="space-y-8 mt-5">
+                        <div className="space-y-8">
 
                             {/* Basic Info Card */}
                             <Card title="Service Information" subtitle="Tell us what you offer and where/how you operate" icon={Briefcase}>
