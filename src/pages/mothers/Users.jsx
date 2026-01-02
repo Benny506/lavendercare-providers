@@ -16,14 +16,14 @@ import UsersTable from "./auxiliary/UsersTable";
 export default function Users() {
     const navigate = useNavigate();
 
-    const { fetchUsersThatHaveBooked } = useApiReqs()
+    const { fetchUsersAssignedToMe } = useApiReqs()
 
     const [users, setUsers] = useState([])
     const [searchTerm, setSearchTerm] = useState('')
     const [filter, setFilter] = useState("All")
 
     useEffect(() => {
-        fetchUsersThatHaveBooked({
+        fetchUsersAssignedToMe({
             callBack: ({ bookedUsers }) => {
                 setUsers(bookedUsers)
             }
@@ -112,7 +112,7 @@ export default function Users() {
                 <div className="w-full flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 p-4 pb-1 border-b-1">
                     <div className="flex flex-col gap-1">
                         <h2 className="font-bold text-xl text-gray-900">Mothers</h2>
-                        <p className="text-xs text-gray-400">See all moms who have booked at least 1 of your services before</p>
+                        <p className="text-xs text-gray-400">See all moms who have been assigned to you</p>
                     </div>
 
                     {/* ✅ Search & Filter Controls */}

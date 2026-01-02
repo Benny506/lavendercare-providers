@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ProfileImg from "@/components/ProfileImg";
+import { getPublicImageUrl } from "@/lib/requestApi";
 
 export default function UserCard({ user }) {
     const navigate = useNavigate();
@@ -35,10 +37,10 @@ export default function UserCard({ user }) {
 
             {/* Top */}
             <div className="flex items-center gap-4">
-                <img
-                    src={profile_img || "/default-avatar.png"}
-                    alt={name}
-                    className="w-14 h-14 rounded-full object-cover border"
+                <ProfileImg 
+                    profile_img={getPublicImageUrl({ path: profile_img, bucket_name: 'user_profiles' })}
+                    name={name}
+                    size="14"
                 />
 
                 <div className="flex-1">

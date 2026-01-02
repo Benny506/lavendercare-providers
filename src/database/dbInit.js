@@ -81,7 +81,21 @@ export async function getVendorDetails({ id }){
     .eq('provider_id', id)
     .order("day", { ascending: true, nullsFirst: false })      
     .order('start_time', { ascending: true, nullsFirst: false })
+    .limit(1000)
+
+  const { data: assignedMothers, error: assignedMothersError } = await supabase
+    .from('assigned_providers')
+    .select(`
+      *
+    `)
+    .eq('provider_id', id)
+    .order("created_at", { ascending: true, nullsFirst: false })      
     .limit(1000)    
+    
+  const { data: license, error: licenseError } = await supabase
+      .from("providers_licenses")
+      .select("*")
+      .eq("provider_id", id)
 
   if(
       profileError
@@ -93,12 +107,18 @@ export async function getVendorDetails({ id }){
       phone_number_error
       || 
       bankError
+      ||
+      licenseError
+      ||
+      assignedMothersError
     ){
     console.log("Profile error", profileError)
     console.log("Services error", servicesError)
     console.log("Bookings error", bookingsError)
     console.log("Phone number error", phone_number_error)
     console.log("banks error", bankError)
+    console.log("licenseError", licenseError)
+    console.log("assignedMothersError", assignedMothersError)
     return { error: "Error getting vendor profile", data: null };
   }
 
@@ -108,7 +128,9 @@ export async function getVendorDetails({ id }){
       services: services,
       bookings: bookingsData,
       phone_number: phone_number[0],
-      bank: bankData[0]
+      bank: bankData[0],
+      license: license?.[0],
+      assignedMothers
     },
     error: null
   }

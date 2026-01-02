@@ -32,8 +32,7 @@ const ServiceType = ({
                             type_name: yup.string().required("Type name is required"),
                             price: yup.number("Must be a valid number").min(1, "Cannot be less than 1").required("Price is required"),
                             duration_hour: yup
-                                .number("Must be a valid number")
-                                .max(24, "Hour cannot exceed 24"),
+                                .number("Must be a valid number"),
                             duration_minutes: yup
                                 .number("Must be a valid number")
                                 .max(59, "Minutes cannot exceed 59"),

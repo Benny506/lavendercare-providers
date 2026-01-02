@@ -2,81 +2,81 @@ import supabase, { SUPABASE_ANON_KEY } from "@/database/dbInit"
 import axios from "axios"
 
 export const requestApi = async ({ url, method, data, token }) => {
-    const headers = 
-    { 
-        "Accept": "application/json",
-        "Content-Type": "application/json; charset=utf-8"    
-    }
+  const headers =
+  {
+    "Accept": "application/json",
+    "Content-Type": "application/json; charset=utf-8"
+  }
 
-    if(token){
-        headers['Authorization'] = `Bearer ${token}`
-    
-    } else{
-        headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`
-    }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
 
-    const config = {
-        url: `${url}`, 
-        method, 
-        headers
-    }
+  } else {
+    headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`
+  }
 
-    if(data){
-        config.data = data
-    }
+  const config = {
+    url: `${url}`,
+    method,
+    headers
+  }
 
-    console.log(config.url)
+  if (data) {
+    config.data = data
+  }
 
-    return axios(config)
-        .then(response => {
-            return { result: response.data, responseStatus: true }
-        })
-        .catch((error) => {
-            console.log(error)
-            if(error.response){
-                //Request made and server responded
-                return { responseStatus: false, errorMsg: error.response.data, statusCode: error.status }
-            } 
+  console.log(config.url)
+
+  return axios(config)
+    .then(response => {
+      return { result: response.data, responseStatus: true }
+    })
+    .catch((error) => {
+      console.log(error)
+      if (error.response) {
+        //Request made and server responded
+        return { responseStatus: false, errorMsg: error.response.data, statusCode: error.status }
+      }
 
 
-            else if(error.request){
-                //Request made but no server response
-                return { responseStatus: false, errorMsg: {error: 'You have to be online for this to work'}, statusCode: error.status }
-            } 
-            
-            
-            else{
-                return { responseStatus: false, errorMsg: {error: 'Unexpected error'}, statusCode: error.status }
-            }
-        })        
+      else if (error.request) {
+        //Request made but no server response
+        return { responseStatus: false, errorMsg: { error: 'You have to be online for this to work' }, statusCode: error.status }
+      }
+
+
+      else {
+        return { responseStatus: false, errorMsg: { error: 'Unexpected error' }, statusCode: error.status }
+      }
+    })
 
 }
 
 
 export const onRequestApi = async ({ requestInfo, successCallBack, failureCallback }) => {
-    try {
+  try {
 
-        if(!successCallBack || !failureCallback || !requestInfo){
-            return;
-        }
-        
-        const request = await requestApi(requestInfo)
-
-        const { result, responseStatus, errorMsg, statusCode } = request
-
-        if(responseStatus){
-            return successCallBack({ requestInfo, result })
-        
-        } else{
-            console.log(errorMsg)
-            const _errorMsg = errorMsg?.details?.message || "Unexpected server error"
-            return failureCallback({ requestInfo, errorMsg: _errorMsg, statusCode })
-        }
-        
-    } catch (error) {
-        console.log(error)
-        return failureCallback({ requestInfo, errorMsg: 'Server error!' })
+    if (!successCallBack || !failureCallback || !requestInfo) {
+      return;
     }
+
+    const request = await requestApi(requestInfo)
+
+    const { result, responseStatus, errorMsg, statusCode } = request
+
+    if (responseStatus) {
+      return successCallBack({ requestInfo, result })
+
+    } else {
+      console.log(errorMsg)
+      const _errorMsg = errorMsg?.details?.message || "Unexpected server error"
+      return failureCallback({ requestInfo, errorMsg: _errorMsg, statusCode })
+    }
+
+  } catch (error) {
+    console.log(error)
+    return failureCallback({ requestInfo, errorMsg: 'Server error!' })
+  }
 }
 
 export const cloudinaryUpload = async ({ files }) => {
@@ -96,16 +96,16 @@ export const cloudinaryUpload = async ({ files }) => {
         method: 'POST',
         body: formData
       })
-      .then(async response => {
+        .then(async response => {
 
-        const data = await response.json()
+          const data = await response.json()
 
-        if (!response.ok) {
+          if (!response.ok) {
             console.log(data)
-          throw new Error(data?.error?.message || `Upload failed with status ${response.status}`)
-        }
-        return data
-      })
+            throw new Error(data?.error?.message || `Upload failed with status ${response.status}`)
+          }
+          return data
+        })
     })
 
     // Await all uploads in parallel
@@ -254,4 +254,8 @@ export const getPublicImageUrl = ({ path, bucket_name }) =>
     ?
     path
     :
-    `https://tzsbbbxpdlupybfrgdbs.supabase.co/storage/v1/object/public/${bucket_name}/${path}`;
+    !path
+      ?
+      ''
+      :
+      `https://tzsbbbxpdlupybfrgdbs.supabase.co/storage/v1/object/public/${bucket_name}/${path}`;

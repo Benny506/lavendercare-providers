@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { getUserDetailsState, setUserDetails } from "@/redux/slices/userDetailsSlice";
 import { ErrorMessage, Formik } from "formik";
 import * as yup from 'yup'
-import { Eye, EyeOff, MapPinHouse, User } from "lucide-react";
+import { Briefcase, Eye, EyeOff, MapPinHouse, User } from "lucide-react";
 import { countries } from "@/constants/constant";
 import ErrorMsg1 from "@/components/ErrorMsg1";
 import { useEffect, useRef, useState } from "react";
@@ -14,21 +14,28 @@ import { appLoadStart, appLoadStop } from "@/redux/slices/appLoadingSlice";
 import supabase from "@/database/dbInit";
 import { toast } from "react-toastify";
 import { cloudinaryUpload, getPublicImageUrl, onRequestApi, uploadAsset } from "@/lib/requestApi";
+import useApiReqs from "@/hooks/useApiReqs";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 const BusinessProfile = () => {
     const dispatch = useDispatch()
 
+    const { updateLicense } = useApiReqs()
+
     const profile = useSelector(state => getUserDetailsState(state).profile)
     const user = useSelector(state => getUserDetailsState(state).user)
+    const license = useSelector(state => getUserDetailsState(state).license)
     const phone_number = useSelector(state => getUserDetailsState(state).phone_number)
 
     const profileInputRef = useRef(null)
+    const licenseInputRef = useRef(null)
 
     const [apiReqs, setApiReqs] = useState({ isLoading: false, data: null, errorMsg: null })
     const [profileImgPreview, setProfileImgPreview] = useState({ file: null, preview: null })
     const [passwordVisible, setPasswordVisible] = useState(false)
+    const [licenseFile, setLicenseFile] = useState({ file: null, ext: null })
+    const [licenseExtraText, setLicenseExtraText] = useState('')
 
     useEffect(() => {
         const { isLoading, data } = apiReqs
@@ -188,6 +195,8 @@ const BusinessProfile = () => {
     const uploadFiles = async ({ file, requestBody }) => {
         try {
 
+            dispatch(appLoadStart())
+
             const { filePath, error } = await uploadAsset({ file, id: user?.id, bucket_name: 'user_profiles', ext: 'png' })
 
             if (!filePath) throw new Error()
@@ -210,8 +219,52 @@ const BusinessProfile = () => {
 
         } catch (error) {
             console.log(error)
+            dispatch(appLoadStop())
             return editProfileFailure({ errorMsg: 'Error uploading image' })
         }
+    }
+
+    const handleLicenseUpload = async () => {
+        try {
+
+            if (!licenseFile.ext || !licenseFile.file) return toast.info("Select a file first");
+
+            if (!licenseExtraText) return toast.info("Write something about the document you are uploading");
+
+            dispatch(appLoadStart())
+
+            const { filePath, error } = await uploadAsset({ file: licenseFile.file, id: user?.id, bucket_name: 'provider_licenses', ext: licenseFile.ext })
+
+            if (!filePath) throw new Error();
+
+            const documents = [
+                ...(license.documents || []),
+                {
+                    file: filePath,
+                    extraText: licenseExtraText
+                }
+            ]
+
+            updateLicense({
+                callBack: ({ }) => {
+                    setLicenseExtraText('')
+                    setLicenseFile({ file: null, ext: null })
+                },
+                documents
+            })
+
+        } catch (error) {
+            console.log(error)
+            dispatch(appLoadStop())
+            return apiReqError({ errorMsg: 'Error uploading license document' })
+        }
+    }
+
+    const apiReqError = ({ errorMsg }) => {
+        setApiReqs({ isLoading: false, errorMsg, data: null })
+        toast.error(errorMsg)
+
+        return
     }
 
     const togglePasswordVisibility = () => setPasswordVisible(prev => !prev)
@@ -292,6 +345,26 @@ const BusinessProfile = () => {
                                                 <p className="text-sm sm:text-md text-grey-500">
                                                     {user?.email}
                                                 </p>
+                                                <Badge
+                                                    className={"mt-2"}
+                                                    variant={license.status === 'approved' ? 'default' : license.status === 'pending' ? 'outline' : license.status === 'rejected' ? 'destructive' : 'secondary'}
+                                                >
+                                                    {
+                                                        license?.status === 'approved'
+                                                            ?
+                                                            'Licensed'
+                                                            :
+                                                            license?.status === 'pending'
+                                                                ?
+                                                                'Pending License'
+                                                                :
+                                                                license.status === 'rejected'
+                                                                    ?
+                                                                    'Rejected Licens'
+                                                                    :
+                                                                    'Unlicensed'
+                                                    }
+                                                </Badge>
                                             </div>
                                         </div>
 
@@ -334,16 +407,20 @@ const BusinessProfile = () => {
                                     }}
                                 />
 
-                                <button
-                                    onClick={() => {
-                                        setProfileImgPreview({ file: null, preview: null })
-                                        setFieldValue("profile_img", imageUrl)                                    
-                                    }}
-                                    className="cursor-pointer text-sm text-primary-500 font-bold hover:underline mb-6 flex items-center gap-1"
-                                >
-                                    <Icon icon="mdi:iconoir-cancel" width="16" height="16" />
-                                    Reset Profile-Image
-                                </button>
+                                {
+                                    profileImgPreview.file || profileImgPreview.preview
+                                    &&
+                                    <button
+                                        onClick={() => {
+                                            setProfileImgPreview({ file: null, preview: null })
+                                            setFieldValue("profile_img", imageUrl)
+                                        }}
+                                        className="cursor-pointer text-sm text-primary-500 font-bold hover:underline mb-6 flex items-center gap-1"
+                                    >
+                                        <Icon icon="mdi:iconoir-cancel" width="16" height="16" />
+                                        Reset Profile-Image
+                                    </button>
+                                }
                                 <button
                                     onClick={() => profileInputRef.current?.click()}
                                     className="cursor-pointer text-sm text-primary-500 font-bold hover:underline mb-6 flex items-center gap-1"
@@ -394,6 +471,131 @@ const BusinessProfile = () => {
                         )
                     }
                 </Formik>
+
+                <div className="py-5" />
+
+                <hr />
+
+                <div className="py-5" />
+
+                <div className="p-4 sm:p-6">
+                    <div
+                        onClick={() => {
+                            if (licenseFile.ext || licenseFile.file) return toast.info("File already selected");
+
+                            licenseInputRef.current?.click()
+                        }}
+                        className="p-4 rounded-xl border border-primary-200 bg-primary-50/40"
+                    >
+                        <div className="flex items-start gap-3">
+
+                            {/* Icon */}
+                            <div className="p-2 rounded-lg bg-primary-100 text-primary-600">
+                                <Briefcase size={18} />
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 space-y-2">
+                                <p className="text-sm font-semibold text-gray-800">
+                                    License credentials
+                                </p>
+
+                                <p className="text-xs text-gray-600 leading-relaxed">
+                                    To offer healthcare-related services, you’ll need to upload valid
+                                    professional credentials. This helps maintain trust and compliance. You DO NOT need a license to offer domestic services!
+                                </p>
+
+                                {/* Upload */}
+                                <label className="inline-flex items-center gap-2 text-xs font-medium text-primary-600">
+                                    Upload license document
+                                </label>
+
+                                <input
+                                    ref={licenseInputRef}
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    style={{
+                                        display: 'none'
+                                    }}
+                                    // className="hidden"
+
+                                    onChange={(e) => {
+                                        const MAX_FILE_SIZE = 9 * 1024 * 1024; // 9MB
+
+                                        const file = e.target.files?.[0]
+                                        if (!file) return
+
+                                        const allowedTypes = [
+                                            'application/pdf',
+                                            'image/png',
+                                            'image/jpg',
+                                            'image/jpeg',
+                                        ]
+
+                                        // File type check
+                                        if (!allowedTypes.includes(file.type)) {
+                                            return toast.info("Invalid file type. Must be PDF, JPG, JPEG or PNG")
+                                        }
+
+                                        // File size check
+                                        if (file.size > MAX_FILE_SIZE) {
+                                            return toast.info("File size too large. Maximum allowed is 5MB")
+                                        }
+
+                                        const ext = file.type === 'application/pdf' ? 'pdf' : 'image'
+
+                                        setLicenseFile({ file, ext })
+                                    }}
+
+                                />
+
+                                {/* Helper */}
+                                <p className="text-[11px] text-gray-400">
+                                    Accepted formats: PDF, JPG, PNG · Max size 5MB
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {
+                        (licenseFile.ext && licenseFile.file)
+                        &&
+                        <div className="mt-5">
+                            <div className="mb-3">
+                                <label className="text-sm font-medium text-grey-700 mb-1">
+                                    Extra text
+                                </label>
+                                <input
+                                    value={licenseExtraText}
+                                    onChange={e => setLicenseExtraText(e.target.value)}
+                                    type="text"
+                                    placeholder="Say something about this particular document"
+                                    className="border border-grey-300 rounded-lg px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-300 w-full"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    onClick={handleLicenseUpload}
+                                    className="w-full sm:w-auto bg-primary-600 shadow-2xl text-white rounded-4xl py-4 sm:py-5 font-medium"
+                                >
+                                    Upload
+                                </Button>
+
+                                <Button
+                                    onClick={() => {
+                                        setLicenseExtraText("")
+                                        setLicenseFile({ file: null, ext: null })
+                                    }}
+                                    className="w-full sm:w-auto bg-red-600 shadow-2xl text-white rounded-4xl py-4 sm:py-5 font-medium"
+                                >
+                                    Remove
+                                </Button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
 
                 <div className="py-5" />
 

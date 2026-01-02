@@ -1,6 +1,6 @@
 import { getRiskLevelBadgeClass } from '@/lib/utilsJsx';
 import React, { useEffect, useRef, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getMaxByKey } from '@/lib/utils';
@@ -9,6 +9,9 @@ import UserCard from '../mothers/auxiliary/UserCard';
 import useApiReqs from '@/hooks/useApiReqs';
 import ScreeningsTable from './auxiliary/ScreeningsTable';
 import TestInfoModal from './auxiliary/TestInfoModal';
+import { getUserDetailsState } from '@/redux/slices/userDetailsSlice';
+import ProfileImg from '@/components/ProfileImg';
+import { getPublicImageUrl } from '@/lib/requestApi';
 
 const SingleScreening = () => {
     const dispatch = useDispatch()
@@ -27,39 +30,47 @@ const SingleScreening = () => {
         contentRef: containerRef
     });
 
+    const assignedMothers = useSelector(state => getUserDetailsState(state).assignedMothers)
+
     const [latestScreeningInfo, setLatestScreeningInfo] = useState()
     const [patientScreeningHistory, setPatientScreeningHistory] = useState()
     const [testInfoModal, setTestInfoModal] = useState({ show: false, data: null })
 
     useEffect(() => {
-        if (!user_id) {        
+        if (!user_id) {
             navigate(-1)
             toast.info("User not found")
             return;
 
         } else {
 
-            getUserScreenings({
-                callBack: ({ screenings }) => {
-                    const latestScreeningInfo = screenings?.[0]
+            if (assignedMothers?.map(m => m?.mother_id)?.includes(user_id)) {
+                getUserScreenings({
+                    callBack: ({ screenings }) => {
+                        const latestScreeningInfo = screenings?.[0]
 
-                    if(!latestScreeningInfo){
-                        navigate(-1)
-                        toast.info("User has not taken any Mental-Health-Screening-Test before")
+                        if (!latestScreeningInfo) {
+                            navigate(-1)
+                            toast.info("User has not taken any Mental-Health-Screening-Test before")
 
-                        return
-                    }
-
-                    setPatientScreeningHistory(screenings?.map(s => {
-                        return {
-                            ...s,
-                            user_profile: user
+                            return
                         }
-                    }))
-                    setLatestScreeningInfo(latestScreeningInfo)
-                },
-                user_id
-            })
+
+                        setPatientScreeningHistory(screenings?.map(s => {
+                            return {
+                                ...s,
+                                user_profile: user
+                            }
+                        }))
+                        setLatestScreeningInfo(latestScreeningInfo)
+                    },
+                    user_id
+                })
+            
+            } else{
+                navigate(-1)
+                toast.info("Mother not assigned to you")
+            }
         }
     }, [])
 
@@ -79,17 +90,15 @@ const SingleScreening = () => {
         <div>
             <div ref={containerRef} className="min-h-screen bg-white flex flex-wrap rounded-lg">
                 {/* Left Sidebar */}
-                <div className="lg:w-1/3 w-full lg:mb-0 mb-4 p-6 border-r border-gray-200">
+                <div className="lg:w-1/3 w-full lg:mb-0 mb-4 p-6 sticky top-25 self-start">
                     {/* Patient Header */}
                     <div className='mb-6 flex items-start justify-between gap-3 w-full'>
-                        <div className="flex items-start">
-                            <div className="p-2 bg-orange-200 rounded-full flex items-center justify-center mr-4">
-                                <img
-                                    src={profile_img || "/default-avatar.png"}
-                                    alt={name}
-                                    className="w-14 h-14 rounded-full object-cover border"
-                                />
-                            </div>
+                        <div className="flex items-start gap-4">
+                            <ProfileImg 
+                                profile_img={getPublicImageUrl({ path: profile_img, bucket_name: 'user_profiles' })}
+                                name={name}
+                                size='16'
+                            />
 
                             <div>
                                 <h1 className="text-xl font-bold">{name}</h1>
@@ -111,7 +120,7 @@ const SingleScreening = () => {
                     </div>
                 </div>
                 {/* Right Content */}
-                <div className="flex-1 p-6">
+                <div className="flex-1 p-6 border-l border-gray-200">
                     <h2 className="text-xl font-bold mb-6">Latest Result Summary</h2>
                     <div className="bg-white rounded-lg lg:p-6 p-2 mb-8">
                         <table className="w-full">
@@ -158,10 +167,10 @@ const SingleScreening = () => {
 
                     <h2 className="text-xl font-bold mb-6">Full Screening History Table</h2>
 
-                    <ScreeningsTable 
+                    <ScreeningsTable
                         hideViewBtn={true}
                         screenings={patientScreeningHistory}
-                    />                    
+                    />
                 </div>
             </div>
 

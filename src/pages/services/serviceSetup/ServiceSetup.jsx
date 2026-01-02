@@ -14,6 +14,8 @@ import { Briefcase, Clock, Globe } from "lucide-react";
 import ServiceType from "../modals/ServiceType";
 import { Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { getUserDetailsState } from "@/redux/slices/userDetailsSlice";
 
 function reorderDays(obj) {
     const order = [
@@ -30,6 +32,8 @@ export default function ServiceSetup({ info = {} }) {
 
     const { addService, getServiceCategories } = useApiReqs();
 
+    const license = useSelector(state => getUserDetailsState(state).license)
+
     const [allServices, setAllServices] = useState([]);
     const [selectedDay, setSelectedDay] = useState("monday");
     const [serviceTypes, setServiceTypes] = useState([])
@@ -45,6 +49,7 @@ export default function ServiceSetup({ info = {} }) {
     const hideServiceTypeModal = () => setServiceTypeModal({ visible: false, hide: null })
 
     const initialValues = {
+        service_type: info?.service_type || "domestic",
         service_name: info.service_name || "",
         service_category: info.service_category || "",
         service_details: info.service_details || "",
@@ -67,6 +72,7 @@ export default function ServiceSetup({ info = {} }) {
         service_name: yup.string().required("Service name is required"),
         service_category: yup.string().required("Service category is required"),
         service_details: yup.string().required("Service details are required"),
+        service_type: yup.string().required("Service type is required"),
 
         country: yup.string().required("Country is required"),
         state: yup.string().required("State is required"),
@@ -106,10 +112,10 @@ export default function ServiceSetup({ info = {} }) {
 
                     const serviceInfo = values
 
-                    if(serviceTypes?.length === 0) return toast.info("Creat at least 1 session type")
+                    if (serviceTypes?.length === 0) return toast.info("Creat at least 1 session type")
 
                     addService({
-                        callBack: ({}) => {
+                        callBack: ({ }) => {
                             navigate('/services')
                         },
                         serviceInfo,
@@ -122,6 +128,145 @@ export default function ServiceSetup({ info = {} }) {
 
                     return (
                         <div className="space-y-8">
+
+                            <Card
+                                title="What kind of service is this?"
+                                subtitle="Help us understand the nature of this service"
+                                icon={Layers}
+                            >
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                                    {/* Healthcare Service */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if(license.status !== 'approved') return toast.info("License not submitted or not approved!")
+                                            setFieldValue("service_type", "healthcare")
+                                        }}
+                                        className={`relative text-left p-5 rounded-2xl border transition-all duration-200 group
+                                            ${values.service_type === "healthcare"
+                                                ? "border-primary-500 bg-primary-50 ring-2 ring-primary-300"
+                                                : "border-gray-200 hover:border-primary-300 hover:bg-gray-50"
+                                            }`}
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div
+                                                className={`p-3 rounded-xl transition
+                                                    ${values.service_type === "healthcare"
+                                                        ? "bg-primary-500 text-white"
+                                                        : "bg-primary-100 text-primary-600"
+                                                    }`}
+                                            >
+                                                <Briefcase size={22} />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <h4 className="font-semibold text-base">
+                                                    Healthcare Service
+                                                </h4>
+
+                                                <p className="text-sm text-gray-600 leading-relaxed">
+                                                    Professional health-related services that require formal 
+                                                    training and valid licensing to offer legally and ethically.
+                                                    These services involve medical, therapeutic, or psychological 
+                                                    care and may impact a client’s physical or mental wellbeing. 
+                                                    Providers are expected to hold recognized certifications or licenses and comply with professional standards.
+                                                </p>
+
+                                                <div className="text-xs text-gray-500">
+                                                    <span className="font-medium text-gray-600">Examples:</span>{" "}
+                                                    Therapy sessions, counseling, mental health consultations, physiotherapy, clinical wellness services
+                                                </div>
+
+                                                {
+                                                    license?.status !== 'approved'
+                                                    &&
+                                                    <div className="mt-5">
+                                                        <hr />
+                                                        <p className="mt-3 text-xs text-gray-800 leading-relaxed">
+                                                            You're license document has either not been approved or submitted
+                                                        </p>
+                                                        <p  
+                                                            onClick={e => {
+                                                                e.preventDefault()
+                                                                e.stopPropagation()
+                                                                
+                                                                navigate("/settings")
+                                                            }}
+                                                            style={{
+                                                                textDecorationLine: 'underline',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                            className="clickable text-xs text-purple-600"
+                                                        >
+                                                            Go to profile
+                                                        </p>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        {values.service_type === "healthcare" && (
+                                            <span className="absolute top-3 right-3 text-xs font-semibold text-primary-600 bg-white px-2 py-1 rounded-full shadow">
+                                                Selected
+                                            </span>
+                                        )}
+                                    </button>
+
+                                    {/* Domestic Service */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setFieldValue("service_type", "domestic")}
+                                        className={`relative text-left p-5 rounded-2xl border transition-all duration-200 group
+                                            ${values.service_type === "domestic"
+                                                ? "border-primary-500 bg-primary-50 ring-2 ring-primary-300"
+                                                : "border-gray-200 hover:border-primary-300 hover:bg-gray-50"
+                                            }`}
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div
+                                                className={`p-3 rounded-xl transition
+                                                    ${values.service_type === "domestic"
+                                                        ? "bg-primary-500 text-white"
+                                                        : "bg-primary-100 text-primary-600"
+                                                    }`}
+                                            >
+                                                <Layers size={22} />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <h4 className="font-semibold text-base">
+                                                    Domestic Service
+                                                </h4>
+
+                                                <p className="text-sm text-gray-600 leading-relaxed">
+                                                    Practical, non-medical services that do not require professional 
+                                                    healthcare licensing to provide. These services focus on everyday support, comfort, 
+                                                    or maintenance. While skill and experience are important, 
+                                                    they are not regulated by healthcare licensing bodies.
+                                                </p>
+
+                                                <div className="text-xs text-gray-500">
+                                                    <span className="font-medium text-gray-600">Examples:</span>{" "}
+                                                    Laundry services, home massage, cleaning, beauty services, household assistance
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {values.service_type === "domestic" && (
+                                            <span className="absolute top-3 right-3 text-xs font-semibold text-primary-600 bg-white px-2 py-1 rounded-full shadow">
+                                                Selected
+                                            </span>
+                                        )}
+                                    </button>
+
+                                </div>
+
+                                <ErrorMessage name="service_type">
+                                    {errorMsg => <ErrorMsg1 className="mt-4" errorMsg={errorMsg} />}
+                                </ErrorMessage>
+                            </Card>
+
 
                             {/* Basic Info Card */}
                             <Card title="Service Information" subtitle="Tell us what you offer and where/how you operate" icon={Briefcase}>

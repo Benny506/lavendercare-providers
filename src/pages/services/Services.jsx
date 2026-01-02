@@ -18,6 +18,7 @@ import { getServiceStatusBadge, servicesMap } from "@/lib/utilsJsx";
 import { useNavigate } from "react-router-dom";
 import { Dot } from "lucide-react";
 import useApiReqs from "@/hooks/useApiReqs";
+import ServiceBadge from "./auxiliary/ServiceBadge";
 
 /* ---------------- Animations ---------------- */
 
@@ -164,7 +165,11 @@ export default function Services() {
                                             </Badge>
                                         </div>
 
-                                        {getServiceStatusBadge({ status })}
+                                        <div className="flex flex-col items-end gap-2">
+                                            {getServiceStatusBadge({ status })}
+
+                                            <ServiceBadge service_type={service?.service_type} />
+                                        </div>
                                     </div>
 
                                     {/* Types */}

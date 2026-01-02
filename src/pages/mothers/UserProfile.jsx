@@ -12,6 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { bookingStatuses } from "@/constants/constant";
 import BookingsTable from "../bookings/auxiliary/BookingsTable";
 import ScreeningsTable from "../screenings/auxiliary/ScreeningsTable";
+import { useSelector } from "react-redux";
+import { getUserDetailsState } from "@/redux/slices/userDetailsSlice";
+import ProfileImg from "@/components/ProfileImg";
+import { getPublicImageUrl } from "@/lib/requestApi";
 
 export default function UserProfile() {
     const navigate = useNavigate();
@@ -21,32 +25,40 @@ export default function UserProfile() {
 
     const { getUserInfo } = useApiReqs()
 
+    const assignedMothers = useSelector(state => getUserDetailsState(state).assignedMothers)
+
     const [user, setUser] = useState({})
     const [userBookings, setUserBookings] = useState([])
     const [userScreenings, setUserScreenings] = useState([])
     const [filter, setFilter] = useState("All");
-    const [searchTerm, setSearchTerm] = useState("");    
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         if (user_id) {
-            getUserInfo({
-                callBack: ({ user, userBookings, userScreenings }) => {
-                    setUser(user)
-                    setUserBookings(userBookings?.map(b => {
-                        return {
-                            ...b,
-                            user_profile: user
-                        }
-                    }))
-                    setUserScreenings(userScreenings?.map(s => {
-                        return {
-                            ...s,
-                            user_profile: user
-                        }
-                    }))
-                },
-                user_id
-            })
+            if (assignedMothers?.map(m => m?.mother_id)?.includes(user_id)) {
+                getUserInfo({
+                    callBack: ({ user, userBookings, userScreenings }) => {
+                        setUser(user)
+                        setUserBookings(userBookings?.map(b => {
+                            return {
+                                ...b,
+                                user_profile: user
+                            }
+                        }))
+                        setUserScreenings(userScreenings?.map(s => {
+                            return {
+                                ...s,
+                                user_profile: user
+                            }
+                        }))
+                    },
+                    user_id
+                })
+
+            } else {
+                navigate(-1)
+                toast.info("Mother not assigned to you")
+            }
         } else {
             navigate(-1)
             toast.info("Mother information not found")
@@ -118,13 +130,13 @@ export default function UserProfile() {
 
             {/* Top Card: Basic Info */}
             <div className="bg-white rounded-2xl shadow-md p-6 flex flex-col md:flex-row items-center gap-6">
-                <img
-                    src={profile_img || "/default-avatar.png"}
-                    alt={name}
-                    className="w-24 h-24 rounded-full object-cover border-2 border-grey-200"
+                <ProfileImg 
+                    profile_img={getPublicImageUrl({ path: profile_img, bucket_name: 'user_profiles' })}
+                    name={name}
+                    size="24"
                 />
                 <div className="flex-1 space-y-2">
-                    <p className="text-lg font-semibold">{username}</p>
+                    <p className="text-lg font-semibold">{name}</p>
                     <p className="text-grey-600">{is_pregnant === null ? 'TTC' : is_pregnant ? 'Pregnant' : 'Post-partum'}</p>
                     <p className="text-grey-600 capitalize">{city}, {state}, {country}</p>
                 </div>
@@ -220,11 +232,11 @@ export default function UserProfile() {
                                 <SelectItem value="All">All</SelectItem>
                                 {
                                     bookingStatuses.map(s => (
-                                        <SelectItem value={s} className={'capitalize'}> { s } </SelectItem>
+                                        <SelectItem value={s} className={'capitalize'}> {s} </SelectItem>
                                     ))
                                 }
                             </SelectContent>
-                        </Select>                        
+                        </Select>
                     </div>
                 </div>
 
@@ -246,7 +258,7 @@ export default function UserProfile() {
                 <ScreeningsTable
                     screenings={userScreenings}
                 />
-            </div>            
+            </div>
         </div>
     );
 }

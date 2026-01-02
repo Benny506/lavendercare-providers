@@ -151,7 +151,7 @@ export default function ServiceDetails() {
       {/* SESSION TYPES */}
       <section className="bg-white rounded-2xl border p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Session Types</h2>
+          <h2 className="text-xl font-bold">Service Types</h2>
           <Button
             variant="ghost"
             onClick={() => setEditModals({ type: "serviceType" })}

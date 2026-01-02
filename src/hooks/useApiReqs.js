@@ -5,13 +5,16 @@ import { getUserDetailsState, setUserDetails } from "@/redux/slices/userDetailsS
 import { useSelector } from "react-redux"
 import { useDispatch } from "react-redux"
 import { toast } from "react-toastify"
+import { v4 as uuidv4 } from 'uuid'
 
 export default function useApiReqs() {
 
     const dispatch = useDispatch()
 
     const user = useSelector(state => getUserDetailsState(state).user)
+    const license = useSelector(state => getUserDetailsState(state).license)
     const appointments = useSelector(state => getUserDetailsState(state).bookings)
+    const assignedMothers = useSelector(state => getUserDetailsState(state).assignedMothers)
     const services = useSelector(state => getUserDetailsState(state).services)
 
 
@@ -24,7 +27,7 @@ export default function useApiReqs() {
 
             dispatch(appLoadStart())
 
-            const bookings_userIds = removeDuplicatesFromStringArr({ arr: appointments.map(b => b?.user_profile?.id) })
+            const assignedMothersIds = removeDuplicatesFromStringArr({ arr: assignedMothers.map(assigned => assigned?.mother_id) })
 
             const { count: physicalBookingsCount, error: physicalBookingsError } = await supabase
                 .from('all_bookings')
@@ -55,12 +58,12 @@ export default function useApiReqs() {
             const { count: screeningsCount, error: screeningsError } = await supabase
                 .from('mental_health_test_answers')
                 .select('*', { count: 'exact', head: true })
-                .in('user_id', bookings_userIds)
+                .in('user_id', assignedMothersIds)
 
             const { count: HRA_Count, error: HRA_Error } = await supabase
                 .from('high_risk_alerts')
                 .select('*', { count: 'exact', head: true })
-                .in('user_id', bookings_userIds)
+                .in('user_id', assignedMothersIds)
 
             if (physicalBookingsError || virtualBookingsError || screeningsError || HRA_Error || newVirtualBookingsError || newPhysicalBookingsError) {
                 console.log("physicalBookingsError", physicalBookingsError)
@@ -647,17 +650,17 @@ export default function useApiReqs() {
             apiReqsError({ errorMsg: 'Error retrieving user information!' })
         }
     }
-    const fetchUsersThatHaveBooked = async ({ callBack = () => { }, }) => {
+    const fetchUsersAssignedToMe = async ({ callBack = () => { }, }) => {
         try {
 
             dispatch(appLoadStart())
 
-            const bookings_userIds = removeDuplicatesFromStringArr({ arr: appointments.map(b => b?.user_profile?.id) })
+            const assignedMothersIds = removeDuplicatesFromStringArr({ arr: assignedMothers.map(assigned => assigned?.mother_id) })
 
             const { data, error } = await supabase
                 .from("user_profiles")
                 .select("*")
-                .in("id", bookings_userIds)
+                .in("id", assignedMothersIds)
 
             if (error) {
                 console.log(error)
@@ -684,7 +687,7 @@ export default function useApiReqs() {
 
             dispatch(appLoadStart())
 
-            const bookings_userIds = removeDuplicatesFromStringArr({ arr: appointments.map(b => b?.user_profile?.id) })
+            const assignedMothersIds = removeDuplicatesFromStringArr({ arr: assignedMothers.map(assigned => assigned?.mother_id) })
 
             const { data, error } = await supabase
                 .from('mental_health_test_answers')
@@ -692,7 +695,8 @@ export default function useApiReqs() {
                     *,
                     user_profile: user_profiles (*)
                 `)
-                .in('user_id', bookings_userIds)
+                .in('user_id', assignedMothersIds)
+                .order("created_at", { ascending: false })
 
             if (error) {
                 console.log(error)
@@ -717,6 +721,7 @@ export default function useApiReqs() {
                 .from('mental_health_test_answers')
                 .select(`*`)
                 .eq('user_id', user_id)
+                .order("created_at", { ascending: false })
 
             if (error) {
                 console.log(error)
@@ -732,7 +737,7 @@ export default function useApiReqs() {
             apiReqsError({ errorMsg: 'Error retrieving booked user screening information!' })
         }
     }
-    const fetchTestResults = async ({ callBack = () => {}, requestInfo }) => {
+    const fetchTestResults = async ({ callBack = () => { }, requestInfo }) => {
         try {
 
             dispatch(appLoadStart())
@@ -775,7 +780,7 @@ export default function useApiReqs() {
 
 
     //high risk alerts
-    const markAsViewed = async ({ callBack = () => {}, screening_id }) => {
+    const markAsViewed = async ({ callBack = () => { }, screening_id }) => {
         try {
 
             dispatch(appLoadStart())
@@ -800,7 +805,54 @@ export default function useApiReqs() {
             console.log(error)
             return apiReqsError({ errorMsg: 'Error marking as viewed' })
         }
-    }    
+    }
+
+
+
+
+
+    //licenses
+    const updateLicense = async ({ callBack = () => { }, documents }) => {
+        try {
+
+            dispatch(appLoadStart())
+
+            const { data, error } = await supabase
+                .from("providers_licenses")
+                .upsert(
+                    {
+                        provider_id: user?.id,
+                        updated_at: new Date().toISOString(),
+                        created_at: license?.created_at || new Date().toISOString(),
+                        documents,
+                        id: license?.id || uuidv4(),
+                        status: 'pending'
+                    },
+                    {
+                        onConflict: 'provider_id'
+                    }
+                )
+                .select()
+                .single()
+
+            if (error) {
+                console.log(error)
+                throw new Error()
+            }
+
+            dispatch(setUserDetails({ license: data }))
+
+            dispatch(appLoadStop())
+
+            callBack && callBack({})
+
+            toast.success("License updated")
+
+        } catch (error) {
+            console.log(error)
+            return apiReqsError({ errorMsg: 'Error updating license document' })
+        }
+    }
 
 
 
@@ -857,7 +909,7 @@ export default function useApiReqs() {
 
         //users
         getUserInfo,
-        fetchUsersThatHaveBooked,
+        fetchUsersAssignedToMe,
 
 
 
@@ -873,6 +925,13 @@ export default function useApiReqs() {
 
 
         //high risk alerts
-        markAsViewed
+        markAsViewed,
+
+
+
+
+
+        //licenses
+        updateLicense
     }
 }

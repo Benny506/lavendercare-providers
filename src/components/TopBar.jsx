@@ -21,12 +21,12 @@ const TopBar = ({ setIsOpen }) => {
         {
             key: "mother",
             title: "Mothers",
-            subtitle: "Profiles and medical history overview",
+            subtitle: "Profiles and medical history overview of mothers assigned to you",
         },
         {
             key: "screening",
             title: "Screenings",
-            subtitle: "Health screening records and results",
+            subtitle: "Health screening records and results of mothers assigned to you",
         },
         {
             key: "setting",

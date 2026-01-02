@@ -171,8 +171,8 @@ const Screenings = () => {
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4">
                         <div>
-                            <h2 className="text-2xl font-bold">All Screening</h2>
-                            <p className="text-gray-500">Screenings for Moms that have booked at least 1 service with you</p>
+                            <h2 className="font-bold text-xl text-gray-900">All Screening</h2>
+                            <p className="text-xs text-gray-400">Screenings for Moms that have been assigned to you</p>
                         </div>
                         {/* ✅ Search & Filter Controls */}
                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-3">

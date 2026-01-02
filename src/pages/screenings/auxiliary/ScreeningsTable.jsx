@@ -152,7 +152,7 @@ export default function ScreeningsTable({ screenings = [], hideViewBtn = false }
                     emptyWrapper: "flex flex-col items-center justify-center py-20 text-center",
                     icon: "w-20 h-20 mb-6 text-primary-500",
                     emptyTitleText: "No screening found",
-                    emptySubText: "Mental-Health-Screenings-Test for Moms that book at least 1 service with you will appear here",
+                    emptySubText: "Mental-Health-Screenings-Test for Moms that have been assigned to you will appear here",
                     emptyIcon: "uil:schedule"
                 }}
                 pagination={

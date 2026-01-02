@@ -119,7 +119,7 @@ export default function UsersTable({ users = [] }) {
                 emptyWrapper: "flex flex-col items-center justify-center py-20 text-center",
                 icon: "w-20 h-20 mb-6 text-primary-500",
                 emptyTitleText: "No mothers available",
-                emptySubText: "Moms that book at least 1 service with you will appear here once added",
+                emptySubText: "Moms that have been assigned to you appear here once added",
                 emptyIcon: "uil:schedule"
             }}
             pagination={

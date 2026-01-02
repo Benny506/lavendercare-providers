@@ -14,7 +14,9 @@ const userDetailsSlice = createSlice({
             phone_number: null,
             country_code: null
         },
-        bank: null
+        bank: null,
+        license: {},
+        assignedMothers: []
     },
     reducers: {
         setUserDetails: (state, action) => {
@@ -64,6 +66,14 @@ const userDetailsSlice = createSlice({
             if(action?.payload?.bank){
                 state.bank = action?.payload?.bank
             }
+
+            if(action?.payload?.license){
+                state.license = action?.payload?.license
+            }
+
+            if(action?.payload?.assignedMothers){
+                state.assignedMothers = action?.payload?.assignedMothers
+            }            
         },
         clearUserDetails: (state, action) => {
             state.profile = null
@@ -76,6 +86,8 @@ const userDetailsSlice = createSlice({
                 country_code: null                
             }
             state.bank = null
+            state.license = {}
+            state.assignedMothers = []
         }        
     }
 })
