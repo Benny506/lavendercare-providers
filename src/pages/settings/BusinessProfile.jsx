@@ -15,6 +15,7 @@ import supabase from "@/database/dbInit";
 import { toast } from "react-toastify";
 import { cloudinaryUpload, getPublicImageUrl, onRequestApi, uploadAsset } from "@/lib/requestApi";
 import useApiReqs from "@/hooks/useApiReqs";
+import { statusUpdateMail } from "@/database/email/email";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
@@ -246,9 +247,20 @@ const BusinessProfile = () => {
             ]
 
             updateLicense({
-                callBack: ({ }) => {
+                callBack: async ({ }) => {
                     setLicenseExtraText('')
                     setLicenseFile({ file: null, ext: null })
+
+                    await statusUpdateMail({
+                        toAdmin: true,
+                        to_email: '',
+                        receiver_id: '',
+                        subject: 'New Provider Credentials',
+                        username: 'Admin',
+                        extra_text: `Provider ${profile?.username} just submitted his credentials. View it and approve or dis-approve`,
+                        title: `New Credentials Alert`,
+                        btn_link: "https://admin.lavendercare.co/#/admin/healthcare-provider/credentials-review"
+                    })
                 },
                 documents
             })

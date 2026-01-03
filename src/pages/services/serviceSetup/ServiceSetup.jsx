@@ -16,6 +16,7 @@ import { Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { getUserDetailsState } from "@/redux/slices/userDetailsSlice";
+import { sendEmail, statusUpdateMail } from "@/database/email/email";
 
 function reorderDays(obj) {
     const order = [
@@ -33,6 +34,7 @@ export default function ServiceSetup({ info = {} }) {
     const { addService, getServiceCategories } = useApiReqs();
 
     const license = useSelector(state => getUserDetailsState(state).license)
+    const profile = useSelector(state => getUserDetailsState(state).profile)
 
     const [allServices, setAllServices] = useState([]);
     const [selectedDay, setSelectedDay] = useState("monday");
@@ -108,15 +110,25 @@ export default function ServiceSetup({ info = {} }) {
                 enableReinitialize
                 initialValues={initialValues}
                 validationSchema={validationSchema}
-                onSubmit={(values) => {
+                onSubmit={async (values) => {
 
                     const serviceInfo = values
 
                     if (serviceTypes?.length === 0) return toast.info("Creat at least 1 session type")
 
                     addService({
-                        callBack: ({ }) => {
+                        callBack: async ({ }) => {
                             navigate('/services')
+                            await statusUpdateMail({
+                                toAdmin: true,
+                                to_email: '',
+                                receiver_id: '',
+                                subject: 'New Service Submitted',
+                                username: 'Admin',
+                                extra_text: `Provider ${profile?.username} just created a new Service. View it and approve or dis-approve`,
+                                title: `New Service Alert`,
+                                btn_link: "https://admin.lavendercare.co/#/admin/services"
+                            })
                         },
                         serviceInfo,
                         serviceTypes
@@ -140,7 +152,7 @@ export default function ServiceSetup({ info = {} }) {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            if(license.status !== 'approved') return toast.info("License not submitted or not approved!")
+                                            if (license.status !== 'approved') return toast.info("License not submitted or not approved!")
                                             setFieldValue("service_type", "healthcare")
                                         }}
                                         className={`relative text-left p-5 rounded-2xl border transition-all duration-200 group
@@ -166,10 +178,10 @@ export default function ServiceSetup({ info = {} }) {
                                                 </h4>
 
                                                 <p className="text-sm text-gray-600 leading-relaxed">
-                                                    Professional health-related services that require formal 
+                                                    Professional health-related services that require formal
                                                     training and valid licensing to offer legally and ethically.
-                                                    These services involve medical, therapeutic, or psychological 
-                                                    care and may impact a client’s physical or mental wellbeing. 
+                                                    These services involve medical, therapeutic, or psychological
+                                                    care and may impact a client’s physical or mental wellbeing.
                                                     Providers are expected to hold recognized certifications or licenses and comply with professional standards.
                                                 </p>
 
@@ -186,11 +198,11 @@ export default function ServiceSetup({ info = {} }) {
                                                         <p className="mt-3 text-xs text-gray-800 leading-relaxed">
                                                             You're license document has either not been approved or submitted
                                                         </p>
-                                                        <p  
+                                                        <p
                                                             onClick={e => {
                                                                 e.preventDefault()
                                                                 e.stopPropagation()
-                                                                
+
                                                                 navigate("/settings")
                                                             }}
                                                             style={{
@@ -240,9 +252,9 @@ export default function ServiceSetup({ info = {} }) {
                                                 </h4>
 
                                                 <p className="text-sm text-gray-600 leading-relaxed">
-                                                    Practical, non-medical services that do not require professional 
-                                                    healthcare licensing to provide. These services focus on everyday support, comfort, 
-                                                    or maintenance. While skill and experience are important, 
+                                                    Practical, non-medical services that do not require professional
+                                                    healthcare licensing to provide. These services focus on everyday support, comfort,
+                                                    or maintenance. While skill and experience are important,
                                                     they are not regulated by healthcare licensing bodies.
                                                 </p>
 
@@ -289,24 +301,23 @@ export default function ServiceSetup({ info = {} }) {
 
                                     {/* Service Category */}
                                     <InputGroup label="Category">
-                                        <input
+                                        <select
                                             type="text"
                                             name="service_category"
                                             value={values.service_category}
                                             onChange={handleChange}
                                             onBlur={handleBlur}
-                                            list="service-categories"
-                                            placeholder="Type or select a category"
                                             className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                        />
-
-                                        <datalist id="service-categories">
+                                        >
+                                            <option value={""}>
+                                                Select a category
+                                            </option>
                                             {allServices.map((s, i) => (
                                                 <option key={i} value={s.service}>
                                                     {s.service}
                                                 </option>
                                             ))}
-                                        </datalist>
+                                        </select>
 
                                         <ErrorMessage name="service_category">
                                             {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
@@ -410,7 +421,7 @@ export default function ServiceSetup({ info = {} }) {
                             </Card>
 
                             <Card
-                                title="Session Types"
+                                title="Service Types"
                                 subtitle="Different ways this service can be booked"
                                 icon={Layers}
                             >
