@@ -56,7 +56,7 @@ export default function UsersTable({ users = [] }) {
                         <Icon icon="mdi:mother-heart" className="text-primary-600 w-6 h-6" />
                     </div>
                     <div>
-                        <p className="font-semibold">{row.username}</p>
+                        <p className="font-semibold">{row.name}</p>
                     </div>
                 </div>
             )

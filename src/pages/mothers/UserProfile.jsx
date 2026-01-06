@@ -133,7 +133,7 @@ export default function UserProfile() {
                 <ProfileImg 
                     profile_img={getPublicImageUrl({ path: profile_img, bucket_name: 'user_profiles' })}
                     name={name}
-                    size="24"
+                    size="20"
                 />
                 <div className="flex-1 space-y-2">
                     <p className="text-lg font-semibold">{name}</p>

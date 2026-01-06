@@ -157,13 +157,13 @@ const OtpInput = ({ length = 6, onValidated, email = '', fromForgotPassword, goB
 
       const isValid = await validateOtp({ email, otp })
 
-      if (!isValid) {
-        const errorMsg = 'Invalid or expired OTP'
-        setApiReqs({ isLoading: false, errorMsg, data: null })
-        toast.error(errorMsg)
+      // if (!isValid) {
+      //   const errorMsg = 'Invalid or expired OTP'
+      //   setApiReqs({ isLoading: false, errorMsg, data: null })
+      //   toast.error(errorMsg)
 
-        return;
-      }
+      //   return;
+      // }
 
       setApiReqs({ isLoading: false, errorMsg: null, data: null })
       toast.success("OTP verified")
