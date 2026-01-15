@@ -66,11 +66,11 @@ export default function Services() {
 
         const matchesSearch =
             !search
-            ?
-            true
-            :
-            name?.includes(search) ||
-            category?.includes(search);
+                ?
+                true
+                :
+                name?.includes(search) ||
+                category?.includes(search);
 
         const matchesFilter =
             filter === "all" ? true : service.status === filter;
@@ -172,38 +172,20 @@ export default function Services() {
                                         </div>
                                     </div>
 
-                                    {/* Types */}
-                                    {types?.length > 0 && (
-                                        <div>
-                                            <p className="text-xs font-medium text-gray-500 mb-1">
-                                                Session Types
-                                            </p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {types.map((t, i) => (
-                                                    <span
-                                                        key={i}
-                                                        className="px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-700"
-                                                    >
-                                                        {t.type_name}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
                                     {/* Location */}
                                     <div>
                                         <p className="text-xs font-medium text-gray-500 mb-1">
                                             Location
                                         </p>
-                                        <div className="flex flex-wrap gap-2 text-sm text-gray-700">
-                                            {[country, state, city, location].map((s, i) => (
-                                                <span key={i} className="flex items-center gap-1">
-                                                    <Dot size={16} />
-                                                    {s?.replaceAll("_", " ")}
-                                                </span>
-                                            ))}
-                                        </div>
+                                        <span className="text-sm text-gray-700">
+                                            {
+                                                service?.locations?.length > 0
+                                                    ?
+                                                    `${service?.locations?.length} set`
+                                                    :
+                                                    'Virtual'
+                                            }
+                                        </span>
                                     </div>
 
                                     {/* Footer */}

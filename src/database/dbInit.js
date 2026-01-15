@@ -119,7 +119,7 @@ export async function getVendorDetails({ id }){
     console.log("banks error", bankError)
     console.log("licenseError", licenseError)
     console.log("assignedMothersError", assignedMothersError)
-    return { error: "Error getting vendor profile", data: null };
+    return { error: "Error getting provider profile", data: null };
   }
 
   return{

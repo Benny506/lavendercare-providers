@@ -9,7 +9,8 @@ import { toast } from 'react-toastify'
 const HideService = ({
     isOpen=false,
     service=null,
-    hide=()=>{}
+    hide=()=>{},
+    setService = () => {}
 }) => {
 
     const dispatch = useDispatch()
@@ -47,7 +48,7 @@ const HideService = ({
                 .update({
                     status
                 })
-                .eq('vendor_id', profile?.id)
+                .eq('provider_id', profile?.id)
                 .eq('id', service?.id)
                 .select()
                 .single()
@@ -56,6 +57,10 @@ const HideService = ({
                 console.error(error)
                 throw new Error()
             }
+
+            setService({
+                ...service, status
+            })
 
             const updatedServices = (services || []).map(s => {
                 if(s?.id === service?.id){
@@ -171,7 +176,7 @@ const HideService = ({
                         secondaryButton='Cancel'
                         secondaryButtonFunc={hide}
                         primaryButtonFunc={() => {
-                            if(service?.status === 'pending'){
+                            if(!service?.status === 'approved'){
                                 toast.info("Wait till service has been reviewed by admin!")
                                 return 
                             }

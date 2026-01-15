@@ -1,4 +1,5 @@
 import supabase from "@/database/dbInit"
+import { sendEmail } from "@/database/email/email"
 import { removeDuplicatesFromStringArr } from "@/lib/utils"
 import { appLoadStart, appLoadStop } from "@/redux/slices/appLoadingSlice"
 import { getUserDetailsState, setUserDetails } from "@/redux/slices/userDetailsSlice"

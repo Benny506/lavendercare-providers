@@ -39,6 +39,7 @@ export default function CreateVendorProfile() {
             <div className="w-screen flex justify-center -mt-6">
                 <Formik
                     validationSchema={yup.object().shape({
+                        referral_code: yup.string(),
                         username: yup.string().required("Username is required"),
                         email: yup.string().email("Must be a valid email address").required("Email is required"),
                         password: yup
@@ -57,7 +58,7 @@ export default function CreateVendorProfile() {
                     })}
                     initialValues={{
                         username: '', email: '', password: '', confirmPassword: '',
-                        phone_number: ''
+                        phone_number: '', referral_code: ''
                     }}
                     onSubmit={values => {
                         const stateData = values
@@ -81,6 +82,7 @@ export default function CreateVendorProfile() {
                                 { withErrMsg: true, name: "email", onChange: handleChange, onBlur: handleBlur, value: values.email, label: "Email Address", type: "email", placeholder: "Type your email address", required: true },
                                 {},
                                 {},
+                                { withErrMsg: false, name: "referral_code", onChange: handleChange, onBlur: handleBlur, value: values.referral_code, label: "Referral code", type: "text", placeholder: "Optional", required: false },
                             ]}
                             customFields={{
                                 2: (

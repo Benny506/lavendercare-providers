@@ -10,13 +10,15 @@ import { Button } from "@/components/ui/button";
 import { countries, NigerianCities, states, currencies } from "@/constants/constant";
 import useApiReqs from "@/hooks/useApiReqs";
 import { extractHour_FromHHMM, formatNumberWithCommas, formatTo12Hour, hourNumberToHHMM, secondsToLabel, timeToAMPM_FromHour } from "@/lib/utils";
-import { Briefcase, Clock, Globe } from "lucide-react";
+import { BanknoteArrowDown, Briefcase, Clock, Globe, LocateIcon } from "lucide-react";
 import ServiceType from "../modals/ServiceType";
 import { Layers } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { getUserDetailsState } from "@/redux/slices/userDetailsSlice";
 import { sendEmail, statusUpdateMail } from "@/database/email/email";
+import ServiceLocation from "../modals/ServiceLocation";
+import ServiceAvailability from "./ServiceAvailability";
 
 function reorderDays(obj) {
     const order = [
@@ -37,9 +39,10 @@ export default function ServiceSetup({ info = {} }) {
     const profile = useSelector(state => getUserDetailsState(state).profile)
 
     const [allServices, setAllServices] = useState([]);
-    const [selectedDay, setSelectedDay] = useState("monday");
     const [serviceTypes, setServiceTypes] = useState([])
+    const [locations, setLocations] = useState([])
     const [serviceTypeModal, setServiceTypeModal] = useState({ visible: false, hide: null })
+    const [serviceLocationModal, setServiceLocationModal] = useState({ visible: false, hide: null })
 
     useEffect(() => {
         getServiceCategories({
@@ -50,15 +53,14 @@ export default function ServiceSetup({ info = {} }) {
     const openServiceTypeModal = () => setServiceTypeModal({ visible: true, hide: hideServiceTypeModal })
     const hideServiceTypeModal = () => setServiceTypeModal({ visible: false, hide: null })
 
+    const openServiceLocationModal = () => setServiceLocationModal({ visible: true, hide: hideServiceLocationModal })
+    const hideServiceLocationModal = () => setServiceLocationModal({ visible: false, hide: null })
+
     const initialValues = {
         service_type: info?.service_type || "domestic",
         service_name: info.service_name || "",
         service_category: info.service_category || "",
         service_details: info.service_details || "",
-        country: info.country || "",
-        state: info.state || "",
-        city: info.city || "",
-        location: info.location || "",
         availability: info.availability || {
             monday: { opening: "", closing: "" },
             tuesday: { opening: "", closing: "" },
@@ -75,12 +77,6 @@ export default function ServiceSetup({ info = {} }) {
         service_category: yup.string().required("Service category is required"),
         service_details: yup.string().required("Service details are required"),
         service_type: yup.string().required("Service type is required"),
-
-        country: yup.string().required("Country is required"),
-        state: yup.string().required("State is required"),
-        city: yup.string().required("City is required"),
-        location: yup.string().required("Address is required"),
-
         availability: yup
             .object()
             .test(
@@ -112,9 +108,18 @@ export default function ServiceSetup({ info = {} }) {
                 validationSchema={validationSchema}
                 onSubmit={async (values) => {
 
-                    const serviceInfo = values
+                    const serviceInfo = {
+                        ...values,
+                        locations
+                    }
 
-                    if (serviceTypes?.length === 0) return toast.info("Creat at least 1 session type")
+                    if (serviceTypes?.length === 0) return toast.info("Set duration and fees first!");
+
+                    const physicalServiceTypes = serviceTypes?.filter(s => !s?.is_virtual)?.length
+
+                    if(physicalServiceTypes > 0){
+                        if(locations?.length === 0) return toast.info("This service can be rendered physically. Kindly include at least 1 location!")
+                    }
 
                     addService({
                         callBack: async ({ }) => {
@@ -131,7 +136,7 @@ export default function ServiceSetup({ info = {} }) {
                             })
                         },
                         serviceInfo,
-                        serviceTypes
+                        serviceTypes                        
                     })
                 }}
             >
@@ -324,86 +329,6 @@ export default function ServiceSetup({ info = {} }) {
                                         </ErrorMessage>
                                     </InputGroup>
 
-                                    {/* Location Block */}
-                                    <div className="mt-4 p-4 border border-gray-200 rounded-lg space-y-4 bg-gray-50">
-                                        <h4 className="font-semibold text-sm text-gray-700">Location Information</h4>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {/* Country */}
-                                            <InputGroup label="Country" icon={Globe}>
-                                                <select
-                                                    value={values.country}
-                                                    onChange={e => {
-                                                        setFieldValue("country", e.target.value);
-                                                        setFieldValue("state", "");
-                                                        setFieldValue("city", "");
-                                                    }}
-                                                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                                >
-                                                    <option value="" disabled>Select country</option>
-                                                    {countries.map((c, i) => (
-                                                        <option key={i} value={c.value}>{c.title}</option>
-                                                    ))}
-                                                </select>
-                                                <ErrorMessage name="country">
-                                                    {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
-                                                </ErrorMessage>
-                                            </InputGroup>
-
-                                            {/* State */}
-                                            <InputGroup label="State">
-                                                <select
-                                                    value={values.state}
-                                                    onChange={e => {
-                                                        setFieldValue("state", e.target.value);
-                                                        setFieldValue("city", "");
-                                                    }}
-                                                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                                >
-                                                    <option value="" disabled>Select state</option>
-                                                    {states.filter(s => s.country === values.country).map((s, i) => (
-                                                        <option key={i} value={s.value}>{s.title}</option>
-                                                    ))}
-                                                </select>
-                                                <ErrorMessage name="state">
-                                                    {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
-                                                </ErrorMessage>
-                                            </InputGroup>
-                                        </div>
-
-                                        {/* City */}
-                                        <InputGroup label="City / LGA">
-                                            <select
-                                                name="city"
-                                                value={values.city}
-                                                onChange={handleChange}
-                                                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                            >
-                                                <option value="" disabled>Select city</option>
-                                                {NigerianCities.filter(c => c.state === values.state)[0]?.lgas.map((c, i) => (
-                                                    <option key={i} value={c}>{c}</option>
-                                                ))}
-                                            </select>
-                                            <ErrorMessage name="city">
-                                                {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
-                                            </ErrorMessage>
-                                        </InputGroup>
-
-                                        {/* Specific Address */}
-                                        <InputGroup label="Specific Address">
-                                            <input
-                                                placeholder="Address"
-                                                name="location"
-                                                value={values.location}
-                                                onChange={handleChange}
-                                                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                            />
-                                            <ErrorMessage name="location">
-                                                {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
-                                            </ErrorMessage>
-                                        </InputGroup>
-                                    </div>
-
                                     {/* Service Details */}
                                     <InputGroup label="Details">
                                         <textarea
@@ -421,16 +346,16 @@ export default function ServiceSetup({ info = {} }) {
                             </Card>
 
                             <Card
-                                title="Service Types"
-                                subtitle="Different ways this service can be booked"
-                                icon={Layers}
+                                title="Duration & Fees"
+                                subtitle="Set service pricing and duration"
+                                icon={BanknoteArrowDown}
                             >
                                 <div className="space-y-4">
 
                                     {/* Existing service types */}
                                     {serviceTypes.length === 0 && (
                                         <p className="text-sm text-gray-500">
-                                            No service types added yet.
+                                            Not set
                                         </p>
                                     )}
 
@@ -442,7 +367,7 @@ export default function ServiceSetup({ info = {} }) {
                                                 className="flex justify-between flex-wrap gap-3 items-center border border-gray-200 rounded-lg p-3"
                                             >
                                                 <div>
-                                                    <p className="font-semibold">{type.type_name}</p>
+                                                    {/* <p className="font-semibold">{type.type_name}</p> */}
                                                     <p className="text-sm text-gray-500">
                                                         {type.currency} {formatNumberWithCommas(type.price)} · {secondsToLabel({ seconds: type?.duration })} · {type.is_virtual ? "Virtual" : "Physical"}
                                                     </p>
@@ -468,84 +393,78 @@ export default function ServiceSetup({ info = {} }) {
                                         onClick={openServiceTypeModal}
                                         className="w-full border border-dashed border-primary-400 text-primary-600 py-3 rounded-lg font-semibold hover:bg-primary-50 transition"
                                     >
-                                        + Add service type
+                                        {
+                                            serviceTypes?.length === 0 ? 'Click to Set' : 'Click to add more'
+                                        }
                                     </button>
 
                                 </div>
                             </Card>
 
-                            {/* Availability Card */}
-                            <Card
-                                title="Service Availability"
-                                subtitle="Set opening and closing hours for each day of the week"
-                                icon={Clock}
-                            >
-                                <div className="flex flex-col gap-6">
-                                    {/* Days of the week horizontal scroll */}
-                                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300">
-                                        {Object.keys(availability).map(day => {
-                                            const active = selectedDay === day;
+                            {
+                                serviceTypes?.filter(t => !t?.is_virtual)?.length > 0
+                                &&
+                                <Card
+                                    title="Location & Fees"
+                                    subtitle="One of the pricing & duration information is to be rendered physically. You are required to enter a physical address for such!"
+                                    icon={LocateIcon}
+                                >
+                                    <div className="space-y-4">
+
+                                        {/* Existing service locations */}
+                                        {locations.length === 0 && (
+                                            <p className="text-sm text-gray-500">
+                                                Not set
+                                            </p>
+                                        )}
+
+                                        {locations.map((loc, index) => {
+
                                             return (
-                                                <button
-                                                    key={day}
-                                                    type="button"
-                                                    onClick={() => setSelectedDay(day)}
-                                                    className={`flex-shrink-0 px-4 py-2 rounded-lg font-semibold text-sm transition ${active
-                                                        ? "bg-primary-500 text-white shadow-md"
-                                                        : "border border-gray-300 hover:bg-gray-100"
-                                                        }`}
+                                                <div
+                                                    key={index}
+                                                    className="flex justify-between flex-wrap gap-3 items-center border border-gray-200 rounded-lg p-3"
                                                 >
-                                                    {day.charAt(0).toUpperCase() + day.slice(1)}
-                                                </button>
-                                            );
+                                                    <div>
+                                                        <p className="text-sm text-gray-500">
+                                                            {loc.country} · {loc.state} · {loc.city} · {loc?.address}
+                                                        </p>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const updated = locations.filter((_, i) => i !== index);
+                                                            setLocations(updated);
+                                                        }}
+                                                        className="text-sm text-red-500 hover:underline"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            )
                                         })}
+
+                                        {/* Add button */}
+                                        <button
+                                            type="button"
+                                            onClick={openServiceLocationModal}
+                                            className="w-full border border-dashed border-primary-400 text-primary-600 py-3 rounded-lg font-semibold hover:bg-primary-50 transition"
+                                        >
+                                            {
+                                                locations?.length === 0 ? 'Click to Set' : 'Click to add more'
+                                            }
+                                        </button>
+
                                     </div>
+                                </Card>
+                            }
 
-                                    {/* Current hours display */}
-                                    <div className="bg-gray-50 p-3 rounded-md border border-gray-200 shadow-sm">
-                                        <p className="text-sm text-gray-600">
-                                            {availability[selectedDay]?.opening != null
-                                                ? `Currently: ${timeToAMPM_FromHour({ hour: availability[selectedDay].opening })} - ${timeToAMPM_FromHour({ hour: availability[selectedDay].closing })}`
-                                                : "No hours set yet"}
-                                        </p>
-                                    </div>
-
-                                    {/* Hour Inputs */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <InputGroup label="Opening Hour">
-                                            <HourSelect
-                                                name={`availability.${selectedDay}.opening`}
-                                                value={hourNumberToHHMM(availability[selectedDay]?.opening)}
-                                                onChange={e => {
-                                                    const hour = extractHour_FromHHMM({ hourString: e.target.value });
-                                                    setFieldValue(`availability.${selectedDay}.opening`, hour);
-                                                }}
-                                            />
-                                        </InputGroup>
-
-                                        <InputGroup label="Closing Hour">
-                                            <HourSelect
-                                                name={`availability.${selectedDay}.closing`}
-                                                value={hourNumberToHHMM(availability[selectedDay]?.closing)}
-                                                minHour={availability[selectedDay]?.opening}
-                                                onChange={e => {
-                                                    const hour = extractHour_FromHHMM({ hourString: e.target.value });
-                                                    setFieldValue(`availability.${selectedDay}.closing`, hour);
-                                                }}
-                                            />
-                                        </InputGroup>
-                                    </div>
-
-                                    {/* Helper / Info */}
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        Set opening and closing hours for each day. Leave empty if the service is unavailable.
-                                    </p>
-
-                                    <ErrorMessage name={`availability`}>
-                                        {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
-                                    </ErrorMessage>
-                                </div>
-                            </Card>
+                            {/* Availability Card */}
+                            <ServiceAvailability 
+                                availability={values.availability}
+                                setFieldValue={setFieldValue}
+                            />
 
 
 
@@ -566,6 +485,16 @@ export default function ServiceSetup({ info = {} }) {
                 handleContinueBtnClick={({ requestInfo, info }) => {
                     hideServiceTypeModal()
                     setServiceTypes([requestInfo, ...serviceTypes])
+                }}
+            />
+
+            <ServiceLocation
+                isOpen={serviceLocationModal.visible}
+                hide={serviceLocationModal.hide}
+                continueBtnText={"Continue"}
+                handleContinueBtnClick={({ requestInfo, info }) => {
+                    hideServiceLocationModal()
+                    setLocations([requestInfo, ...locations])
                 }}
             />
         </>

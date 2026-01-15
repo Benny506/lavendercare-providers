@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@iconify/react";
-import { Trash } from "lucide-react";
+import { LocateIcon, Trash } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
@@ -15,6 +15,8 @@ import ServiceType from "./modals/ServiceType";
 import AddServiceModal from "./modals/AddServiceModal";
 import ZeroItems from "@/components/ZeroItems";
 import useApiReqs from "@/hooks/useApiReqs";
+import Card from "@/components/ui/Card";
+import ServiceLocation from "./modals/ServiceLocation";
 
 export default function ServiceDetails() {
   const navigate = useNavigate();
@@ -31,6 +33,8 @@ export default function ServiceDetails() {
 
   const [service, setService] = useState(null);
   const [editModals, setEditModals] = useState({ type: null, info: null });
+  const [locations, setLocations] = useState([])
+  const [serviceLocationModal, setServiceLocationModal] = useState({ visible: false, hide: null })
 
   useEffect(() => {
     if (!service_id) {
@@ -44,6 +48,13 @@ export default function ServiceDetails() {
       callBack: ({ service }) => setService(service),
     });
   }, [service_id]);
+
+  useEffect(() => {
+    setLocations(service?.locations || [])
+  }, [service])
+
+  const openServiceLocationModal = () => setServiceLocationModal({ visible: true, hide: hideServiceLocationModal })
+  const hideServiceLocationModal = () => setServiceLocationModal({ visible: false, hide: null })
 
   if (!service) return null;
 
@@ -151,7 +162,7 @@ export default function ServiceDetails() {
       {/* SESSION TYPES */}
       <section className="bg-white rounded-2xl border p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Service Types</h2>
+          <h2 className="text-xl font-bold">Duration & Fees</h2>
           <Button
             variant="ghost"
             onClick={() => setEditModals({ type: "serviceType" })}
@@ -170,18 +181,16 @@ export default function ServiceDetails() {
                 className="border rounded-xl p-4 hover:shadow transition"
               >
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-bold text-lg">{t.type_name}</h3>
+                  <div className="text-sm space-y-1 text-gray-700">
+                    <p>Duration: {secondsToLabel({ seconds: t.duration })}</p>
+                    <p>
+                      Price: {t.currency}{" "}
+                      {formatNumberWithCommas(t.price)}
+                    </p>
+                  </div>
                   <Badge variant="outline">
                     {t.is_virtual ? "Virtual" : "Physical"}
                   </Badge>
-                </div>
-
-                <div className="text-sm space-y-1 text-gray-700">
-                  <p>Duration: {secondsToLabel({ seconds: t.duration })}</p>
-                  <p>
-                    Price: {t.currency}{" "}
-                    {formatNumberWithCommas(t.price)}
-                  </p>
                 </div>
 
                 <div className="flex justify-between mt-4">
@@ -237,7 +246,7 @@ export default function ServiceDetails() {
         </div>
 
         {/* Content Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <div className="">
 
           {/* Description */}
           <div className="bg-gray-50 rounded-xl p-4 space-y-2">
@@ -246,7 +255,7 @@ export default function ServiceDetails() {
           </div>
 
           {/* Location Info */}
-          <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+          {/* <div className="bg-gray-50 rounded-xl p-4 space-y-2">
             <h3 className="font-semibold text-gray-800">Location</h3>
             <ul className="text-gray-700 text-sm space-y-1">
               <li><span className="font-medium">Country:</span> {country?.replaceAll("_", " ")}</li>
@@ -254,11 +263,73 @@ export default function ServiceDetails() {
               <li><span className="font-medium">City:</span> {city?.replaceAll("_", " ")}</li>
               <li><span className="font-medium">Specific Location:</span> {location}</li>
             </ul>
-          </div>
-
+          </div> */}
         </div>
       </section>
 
+      <Card
+        title="Location & Fees"
+        subtitle="Only set this if this service can be rendered physically!"
+        icon={LocateIcon}
+      >
+        <div className="space-y-4">
+
+          {/* Existing service locations */}
+          {locations.length === 0 && (
+            <p className="text-sm text-gray-500">
+              Not set
+            </p>
+          )}
+
+          {locations.map((loc, index) => {
+
+            return (
+              <div
+                key={index}
+                className="flex justify-between flex-wrap gap-3 items-center border border-gray-200 rounded-lg p-3"
+              >
+                <div>
+                  <p className="text-sm text-gray-500">
+                    {loc.country} · {loc.state} · {loc.city} · {loc?.address}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const canBePhysical = types?.filter(t => !t?.is_virtual)?.[0]
+
+                    const updated = locations.filter((_, i) => i !== index);
+
+                    if(canBePhysical && updated?.length === 0){
+                      return toast.info("This service required at least 1 address because it can be rendered physically")
+                    }
+
+                    updateServiceDetails({
+                      locations: updated?.length === 0 ? null : updated
+                    })
+                  }}
+                  className="text-sm text-red-500 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            )
+          })}
+
+          {/* Add button */}
+          <button
+            type="button"
+            onClick={openServiceLocationModal}
+            className="w-full border border-dashed border-primary-400 text-primary-600 py-3 rounded-lg font-semibold hover:bg-primary-50 transition"
+          >
+            {
+              locations?.length === 0 ? 'Click to Set' : 'Click to add more'
+            }
+          </button>
+
+        </div>
+      </Card>
 
       {/* SERVICE HOURS (UNCHANGED) */}
       <SetServiceHours
@@ -271,6 +342,7 @@ export default function ServiceDetails() {
         service={service}
         isOpen={editModals.type === "hide_service"}
         hide={() => setEditModals({ type: null })}
+        setService={setService}
       />
 
       <ServiceType
@@ -309,6 +381,20 @@ export default function ServiceDetails() {
         isOpen={editModals.type === "service_details"}
         hide={() => setEditModals({ type: null })}
         handleContinueBtnClick={updateServiceDetails}
+      />
+
+      <ServiceLocation
+        isOpen={serviceLocationModal.visible}
+        hide={serviceLocationModal.hide}
+        continueBtnText={"Continue"}
+        handleContinueBtnClick={({ requestInfo, info }) => {
+          hideServiceLocationModal()
+          const updatedLocations = [requestInfo, ...locations]
+
+          updateServiceDetails({
+            locations: updatedLocations
+          })
+        }}
       />
     </div>
   );

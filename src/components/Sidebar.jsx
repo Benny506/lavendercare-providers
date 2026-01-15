@@ -20,6 +20,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const { pathname } = useLocation()
 
   const profile = useSelector(state => getUserDetailsState(state).profile)
+  const assignedMothers = useSelector(state => getUserDetailsState(state).assignedMothers)
   const user = useSelector(state => getUserDetailsState(state).user)
 
   const userLogout = async () => {
@@ -77,6 +78,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   const imageUrl = getPublicImageUrl({ path: profile?.profile_img, bucket_name: 'user_profiles' })
 
+  const navItems = assignedMothers?.length > 0 ? SidebarItems : SidebarItems?.filter(item => item.path !== '/mothers' && item?.path !== '/screenings')
+
   return (
     <aside className={`fixed h-full overflow-y-auto md:h-max lg:h-screen max-w-max flex flex-col bg-white border-r border-[#E9E9E9] justify-between mt-0.5 transform transition-transform duration-300 z-50 ${isOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static`}>
       <div className=''>
@@ -88,7 +91,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
         {/* Navigation */}
         <nav className="flex flex-col gap-2 px-8">
-          {SidebarItems.map((item) => {
+          {navItems.map((item) => {
 
             const active = activeNav === item.label.toLowerCase() ? true : false
 

@@ -16,6 +16,7 @@ import { toast } from "react-toastify";
 import { cloudinaryUpload, getPublicImageUrl, onRequestApi, uploadAsset } from "@/lib/requestApi";
 import useApiReqs from "@/hooks/useApiReqs";
 import { statusUpdateMail } from "@/database/email/email";
+import { v4 as uuidv4 } from 'uuid'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
@@ -105,15 +106,18 @@ const BusinessProfile = () => {
     const editPhoneNumber = async ({ requestInfo }) => {
         try {
 
+            console.log(requestInfo)
+
             const { data, error } = await supabase
                 .from('unique_phones')
                 .upsert(
                     {
                         ...requestInfo,
+                        id: phone_number?.id || uuidv4(),
                         user_id: profile?.id
                     },
                     {
-                        onConflict: ['user_id']
+                        onConflict: ['phone_number', 'country_code']
                     }
                 )
                 .select()
@@ -420,7 +424,7 @@ const BusinessProfile = () => {
                                 />
 
                                 {
-                                    profileImgPreview.file || profileImgPreview.preview
+                                    (profileImgPreview.file || profileImgPreview.preview)
                                     &&
                                     <button
                                         onClick={() => {
@@ -792,6 +796,124 @@ const BusinessProfile = () => {
                                         className="w-full sm:w-auto bg-primary-600 shadow-2xl text-white rounded-4xl py-4 sm:py-5 font-medium"
                                     >
                                         Update email
+                                    </Button>
+                                </div>
+                            </div>
+                        )
+                    }
+                </Formik>
+
+                <div className="py-5" />
+
+                <hr />
+
+                <div className="py-5" />
+
+                <Formik
+                    enableReinitialize
+                    validationSchema={yup.object().shape({
+                        country: yup.string().required("Country is required"),
+                        state: yup.string().required("State is required"),
+                        city: yup.string().required("City is required"),
+                        address: yup.string().required("Address is required"),
+                    })}
+                    initialValues={{
+                        country: profile?.country || '',
+                        state: profile?.state || '',
+                        city: profile?.city || '',
+                        address: profile?.address || '',
+                    }}
+                    onSubmit={values => {
+                        setApiReqs({
+                            isLoading: true,
+                            errorMsg: null,
+                            data: {
+                                type: 'editProfile',
+                                requestInfo: values
+                            }
+                        })
+                    }}
+                >
+                    {
+                        ({ handleBlur, handleChange, handleSubmit, isValid, dirty, values, setFieldValue }) => (
+                            <div className="p-4 sm:p-6 max-w-full md:max-w-2xl">
+                                {/* Form */}
+                                <div className="space-y-4">
+                                    {/* Phone Number */}
+                                    <div className="flex flex-col space-y-1">
+                                        <label className="text-sm font-medium text-gray-600">
+                                            Country
+                                        </label>
+                                        <input
+                                            name="country"
+                                            value={values.country}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            placeholder="Nigeria, USA, Ghana e.t.c"
+                                            className="flex-1 border border-t-0 sm:border-t border-grey-300 bg-grey-50 rounded-lg px-4 py-3 text-sm placeholder-grey-400 focus:outline-none"
+                                        />
+                                        <ErrorMessage name="country">
+                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} />}
+                                        </ErrorMessage>
+                                    </div>
+
+                                    <div className="flex flex-col space-y-1">
+                                        <label className="text-sm font-medium text-gray-600">
+                                            State
+                                        </label>
+                                        <input
+                                            name="state"
+                                            value={values.state}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            placeholder="Lagos, Cross River, e.t.c."
+                                            className="flex-1 border border-t-0 sm:border-t border-grey-300 bg-grey-50 rounded-lg px-4 py-3 text-sm placeholder-grey-400 focus:outline-none"
+                                        />
+                                        <ErrorMessage name="state">
+                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} />}
+                                        </ErrorMessage>
+                                    </div>
+
+                                    <div className="flex flex-col space-y-1">
+                                        <label className="text-sm font-medium text-gray-600">
+                                            City
+                                        </label>
+                                        <input
+                                            name="city"
+                                            value={values.city}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            placeholder="Calabar, e.t.c."
+                                            className="flex-1 border border-t-0 sm:border-t border-grey-300 bg-grey-50 rounded-lg px-4 py-3 text-sm placeholder-grey-400 focus:outline-none"
+                                        />
+                                        <ErrorMessage name="city">
+                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} />}
+                                        </ErrorMessage>
+                                    </div>
+
+                                    <div className="flex flex-col space-y-1">
+                                        <label className="text-sm font-medium text-gray-600">
+                                            Addreess
+                                        </label>
+                                        <input
+                                            name="address"
+                                            value={values.address}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            placeholder="No 3. 123-road off..."
+                                            className="flex-1 border border-t-0 sm:border-t border-grey-300 bg-grey-50 rounded-lg px-4 py-3 text-sm placeholder-grey-400 focus:outline-none"
+                                        />
+                                        <ErrorMessage name="address">
+                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} position={'left'} />}
+                                        </ErrorMessage>
+                                    </div>
+
+                                    {/* Save Changes Button */}
+                                    <Button
+                                        onClick={handleSubmit}
+                                        className="w-full sm:w-auto bg-primary-600 shadow-2xl text-white rounded-4xl py-4 sm:py-5 font-medium"
+                                    >
+                                        Update Address
                                     </Button>
                                 </div>
                             </div>

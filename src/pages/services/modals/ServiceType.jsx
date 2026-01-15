@@ -29,7 +29,7 @@ const ServiceType = ({
                         yup.object().shape({
                             // pricing_type: yup.string().required('Pricing type is required'),
                             currency: yup.string().required("Currency is required"),
-                            type_name: yup.string().required("Type name is required"),
+                            // type_name: yup.string().required("Type name is required"),
                             price: yup.number("Must be a valid number").min(1, "Cannot be less than 1").required("Price is required"),
                             duration_hour: yup
                                 .number("Must be a valid number"),
@@ -42,11 +42,11 @@ const ServiceType = ({
                         })
                     }
                     initialValues={{
-                        currency: info?.currency,
-                        price: info?.price,
-                        type_name: info?.type_name,
-                        duration_hour: splitSeconds(info?.duration)?.hour,
-                        duration_minutes: splitSeconds(info?.duration)?.minutes,
+                        currency: info?.currency || "",
+                        price: info?.price || "",
+                        // type_name: info?.type_name,
+                        duration_hour: info?.duration ? splitSeconds(info?.duration)?.hour : "",
+                        duration_minutes: info?.duration ? splitSeconds(info?.duration)?.minutes : "",
                         is_virtual: info?.is_virtual || false
                     }}
                     onSubmit={(values, { resetForm }) => {
@@ -79,7 +79,7 @@ const ServiceType = ({
                 >
                     {({ handleBlur, handleChange, handleSubmit, values, setFieldValue }) => (
                         <Modal
-                            title="Set session type"
+                            title="Set Duration & Fees"
                             // primaryButton="Go back"
                             secondaryButton={continueBtnText || "Save"}
                             onClose={hide}
@@ -126,13 +126,13 @@ const ServiceType = ({
                                         }}
                                         className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                                     />
-                                    <label className="text-sm font-medium">This is a virtual service</label>
+                                    <label className="text-sm font-medium">Rendered virtually ?</label>
                                     <ErrorMessage name="is_virtual">
                                         {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
                                     </ErrorMessage>
                                 </div>
 
-                                <div className="">
+                                {/* <div className="">
                                     <label className="block text-sm font-medium">Session-type name</label>
                                     <input
                                         name="type_name"
@@ -146,7 +146,7 @@ const ServiceType = ({
                                     <ErrorMessage name="type_name">
                                         {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
                                     </ErrorMessage>
-                                </div>
+                                </div> */}
 
                                 <div>
                                     <label className="block text-sm font-medium">Currency</label>

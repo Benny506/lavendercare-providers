@@ -46,6 +46,7 @@ export const statusUpdateMail = async ({
 
 export async function sendEmail({
     from_email = 'no-reply@lavendercare.co',
+    toAdmin=false,
     subject,
     to_email,
     data,
@@ -59,7 +60,11 @@ export async function sendEmail({
             url: 'https://tzsbbbxpdlupybfrgdbs.supabase.co/functions/v1/send-email-via-mailsender',
             method: 'POST',
             data: {
-                from_email, to_email, data, template_id, subject
+                from_email, 
+                to_email: toAdmin ? adminMail : to_email,
+                data, 
+                template_id, 
+                subject
             }
         })
 
