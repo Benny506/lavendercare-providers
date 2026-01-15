@@ -117,7 +117,7 @@ const BusinessProfile = () => {
                         user_id: profile?.id
                     },
                     {
-                        onConflict: ['phone_number', 'country_code']
+                        onConflict: ['phone_number', 'country_code', 'user_id']
                     }
                 )
                 .select()
