@@ -1,4 +1,7 @@
-import { Menu, Bell, ChevronDown, Settings, User, HandHelping } from "lucide-react";
+import { formatNumberWithCommas } from "@/lib/utils";
+import { getUserDetailsState } from "@/redux/slices/userDetailsSlice";
+import { Menu, Bell, ChevronDown, Settings, User, HandHelping, Copy, Dot } from "lucide-react";
+import { useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 
 const TopBar = ({ setIsOpen }) => {
@@ -6,6 +9,8 @@ const TopBar = ({ setIsOpen }) => {
     const navigate = useNavigate()
 
     const pathname = useLocation().pathname.toLowerCase()
+
+    const referral = useSelector(state => getUserDetailsState(state).referral)
 
     const routeMeta = [
         {

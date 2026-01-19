@@ -97,6 +97,11 @@ export async function getVendorDetails({ id }){
       .select("*")
       .eq("provider_id", id)
 
+  const { data: referral, error: referralError } = await supabase
+      .from("referral_codes")
+      .select("*")
+      .eq("user_id", id)      
+
   if(
       profileError
       ||
@@ -130,7 +135,8 @@ export async function getVendorDetails({ id }){
       phone_number: phone_number[0],
       bank: bankData[0],
       license: license?.[0],
-      assignedMothers
+      assignedMothers,
+      referral: referral?.[0]
     },
     error: null
   }

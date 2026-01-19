@@ -2,6 +2,16 @@ import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge"
 import { DateTime } from "luxon";
 
+export async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return { success: true };
+  } catch (err) {
+    console.error("Clipboard copy failed:", err);
+    return { success: false, error: err };
+  }
+}
+
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }

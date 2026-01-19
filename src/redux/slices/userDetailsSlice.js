@@ -16,7 +16,8 @@ const userDetailsSlice = createSlice({
         },
         bank: null,
         license: {},
-        assignedMothers: []
+        assignedMothers: [],
+        referral: null
     },
     reducers: {
         setUserDetails: (state, action) => {
@@ -73,6 +74,10 @@ const userDetailsSlice = createSlice({
 
             if(action?.payload?.assignedMothers){
                 state.assignedMothers = action?.payload?.assignedMothers
+            }
+            
+            if(action?.payload?.referral){
+                state.referral = action?.payload?.referral
             }            
         },
         clearUserDetails: (state, action) => {
@@ -88,6 +93,7 @@ const userDetailsSlice = createSlice({
             state.bank = null
             state.license = {}
             state.assignedMothers = []
+            state.referral = null
         }        
     }
 })

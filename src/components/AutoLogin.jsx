@@ -52,7 +52,7 @@ export default function AutoLogin({ children }){
 
             } else {
 
-                const { profile, services, bookings, phone_number, bank, license, assignedMothers } = infoData
+                const { profile, services, bookings, phone_number, bank, license, assignedMothers, referral } = infoData
 
                 dispatch(setUserDetails({
                     user,
@@ -63,7 +63,8 @@ export default function AutoLogin({ children }){
                     phone_number,
                     bank,
                     license,
-                    assignedMothers
+                    assignedMothers,
+                    referral
                 }))
 
                 setAppLoading(false)

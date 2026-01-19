@@ -55,10 +55,10 @@ const Login = () => {
                 throw new Error()
             }
 
-            const { profile, session, user, services, bookings, phone_number, bank, license, assignedMothers } = data
+            const { profile, session, user, services, bookings, phone_number, bank, license, assignedMothers, referral } = data
 
             dispatch(setUserDetails({
-                profile, services, bookings, phone_number, session, user, bank, license, assignedMothers
+                profile, services, bookings, phone_number, session, user, bank, license, assignedMothers, referral
             }))
 
             setApiReqs({ isLoading: false, data: null, errorMsg: null })

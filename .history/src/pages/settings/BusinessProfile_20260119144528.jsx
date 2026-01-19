@@ -181,8 +181,6 @@ const BusinessProfile = () => {
 
             setApiReqs({ isLoading: false, data: null, errorMsg: null })
 
-            setProfileImgPreview({ file: null, preview: null })
-
             toast.success("Profile updated")
 
             return;
@@ -317,9 +315,8 @@ const BusinessProfile = () => {
                     onSubmit={values => {
                         const requestInfo = values
 
-                        delete requestInfo.profile_img
-
                         if (profileImgPreview?.file) {
+                            delete requestInfo.profile_img
 
                             setApiReqs({ isLoading: true, errorMsg: null, data: null })
                             uploadFiles({ file: profileImgPreview?.file, requestBody: requestInfo })
@@ -345,9 +342,9 @@ const BusinessProfile = () => {
                                         <div className="flex items-center gap-3">
                                             {/* Profile Logo */}
                                             {
-                                                (profileImgPreview?.preview || imageUrl)
+                                                (values?.profile_img || profileImgPreview?.preview)
                                                     ?
-                                                    <img src={profileImgPreview?.preview || imageUrl} alt="Profile image" className="border-grey-50 border-2 shadow-2xl w-16 h-16 sm:w-18 sm:h-18 rounded-full" />
+                                                    <img src={profileImgPreview?.preview || values?.profile_img} alt="Profile image" className="border-grey-50 border-2 shadow-2xl w-16 h-16 sm:w-18 sm:h-18 rounded-full" />
                                                     :
                                                     <span className="text-gray-600 font-medium text-xs">Profile image not set</span>
                                             }
@@ -428,7 +425,7 @@ const BusinessProfile = () => {
                                     <button
                                         onClick={() => {
                                             setProfileImgPreview({ file: null, preview: null })
-                                            setFieldValue("profile_img", "")
+                                            setFieldValue("profile_img", imageUrl)
                                         }}
                                         className="cursor-pointer text-sm text-primary-500 font-bold hover:underline mb-6 flex items-center gap-1"
                                     >

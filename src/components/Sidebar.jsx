@@ -4,13 +4,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useLocation, useNavigate, NavLink } from 'react-router-dom';
 import Image from './ui/image';
 import { SidebarItems } from '@/constants/constant';
-import { X } from 'lucide-react';
+import { Copy, Dot, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearUserDetails, getUserDetailsState } from '@/redux/slices/userDetailsSlice';
 import supabase from '@/database/dbInit';
 import { appLoadStart, appLoadStop } from '@/redux/slices/appLoadingSlice';
 import { toast } from 'react-toastify';
 import { getPublicImageUrl } from '@/lib/requestApi';
+import { copyToClipboard, formatNumberWithCommas } from '@/lib/utils';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const dispatch = useDispatch()
@@ -20,6 +21,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const { pathname } = useLocation()
 
   const profile = useSelector(state => getUserDetailsState(state).profile)
+  const referral = useSelector(state => getUserDetailsState(state).referral)
   const assignedMothers = useSelector(state => getUserDetailsState(state).assignedMothers)
   const user = useSelector(state => getUserDetailsState(state).user)
 
@@ -177,25 +179,44 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       </div>
 
       {/* User Profile */}
-      <div className="px-6 py-5 pb-15 flex items-center gap-4 border-t border-[#E9E9E9]">
-        {
-          profile?.profile_img
-            ?
-            <img
-              src={imageUrl}
-              alt='Profile img'
-              className='rounded-full h-8 w-8'
-            />
-            :
-            <></>
-        }
-        <div className="flex-1">
-          <div className="font-bold text-md text-[#2D1A4A]">{profile?.business_name}</div>
-          <div className="text-[#7B3FE4] text-sm">{user?.email}</div>
+      <div className="px-6 py-5 pb-15 border-t border-[#E9E9E9]">
+        <div className='flex items-center gap-4'>
+          {
+            profile?.profile_img
+              ?
+              <img
+                src={imageUrl}
+                alt='Profile img'
+                className='rounded-full h-8 w-8'
+              />
+              :
+              <></>
+          }
+          <div className="flex-1">
+            <div className="font-bold text-md text-[#2D1A4A]">{profile?.business_name}</div>
+            <div className="text-[#7B3FE4] text-sm">{user?.email}</div>
+          </div>
+          <button onClick={userLogout} className="cursor-pointer">
+            <Icon icon="solar:logout-outline" width="24" height="24" style={{ color: "red" }} />
+          </button>
         </div>
-        <button onClick={userLogout} className="cursor-pointer">
-          <Icon icon="solar:logout-outline" width="24" height="24" style={{ color: "red" }} />
-        </button>
+
+        <div 
+          onClick={async () => {
+            const { success } = await copyToClipboard(referral?.referral_code)
+            return success ? toast.success("Copied!") : toast.error("Copying error!")
+          }}
+          className="flex items-center gap-2 mt-4"
+        >
+          <Copy size={14} />
+          <p className="text-sm text-gray-500">
+            {referral?.referral_code}
+          </p>
+          <Dot size={14} />
+          <p className="text-sm text-gray-500">
+            {formatNumberWithCommas(referral?.referred_count)} users referred
+          </p>
+        </div>
       </div>
     </aside>
   );

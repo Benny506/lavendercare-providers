@@ -181,8 +181,6 @@ const BusinessProfile = () => {
 
             setApiReqs({ isLoading: false, data: null, errorMsg: null })
 
-            setProfileImgPreview({ file: null, preview: null })
-
             toast.success("Profile updated")
 
             return;
@@ -317,9 +315,8 @@ const BusinessProfile = () => {
                     onSubmit={values => {
                         const requestInfo = values
 
-                        delete requestInfo.profile_img
-
                         if (profileImgPreview?.file) {
+                            delete requestInfo.profile_img
 
                             setApiReqs({ isLoading: true, errorMsg: null, data: null })
                             uploadFiles({ file: profileImgPreview?.file, requestBody: requestInfo })
