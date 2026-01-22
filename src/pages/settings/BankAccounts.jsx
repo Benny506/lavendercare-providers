@@ -56,7 +56,7 @@ const BankAccounts = () => {
             const { data, error } = await supabase
                 .from('banks')
                 .select('*')
-                .eq("vendor_id", profile?.id)
+                .eq("provider_id", profile?.id)
 
             if (error) {
                 console.log(error)

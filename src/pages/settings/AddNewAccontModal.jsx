@@ -82,9 +82,9 @@ export default function AddNewAccountModal({ isOpen, onClose, setBank }) {
                 .from('banks')
                 .upsert({
                     ...requestInfo,
-                    vendor_id: profile?.id
+                    provider_id: profile?.id
                 }, {
-                    onConflict: 'vendor_id'
+                    onConflict: 'provider_id'
                 })
                 .select()
                 .single()
@@ -174,6 +174,8 @@ export default function AddNewAccountModal({ isOpen, onClose, setBank }) {
                     }}
                     onSubmit={values => {
 
+                        console.log("HERE")
+
                         // CUSTOMER BANK SETUP!!!
                         if(!bankCode) return toast.info("Select a bank");
 
@@ -254,7 +256,7 @@ export default function AddNewAccountModal({ isOpen, onClose, setBank }) {
                                             onChange={(e) => setBankCode(e.target.value)}
                                             className="w-full mt-1 border border-gray-300 rounded-lg p-2 text-sm focus:outline-none mb-2"
                                         >
-                                            <option selected disabled>
+                                            <option value={""}>
                                                 Select bank
                                             </option>
                                             {
@@ -280,7 +282,7 @@ export default function AddNewAccountModal({ isOpen, onClose, setBank }) {
                                             onBlur={handleBlur}
                                             className="w-full mt-1 border border-gray-300 rounded-lg p-2 text-sm focus:outline-none mb-2"
                                         >
-                                            <option selected disabled>
+                                            <option value={""}>
                                                 Select account type
                                             </option>
                                             {
