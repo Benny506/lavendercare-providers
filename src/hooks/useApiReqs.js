@@ -14,7 +14,7 @@ export default function useApiReqs() {
 
     const user = useSelector(state => getUserDetailsState(state).user)
     const license = useSelector(state => getUserDetailsState(state).license)
-    const appointments = useSelector(state => getUserDetailsState(state).bookings)
+    const bookings = useSelector(state => getUserDetailsState(state).bookings)
     const assignedMothers = useSelector(state => getUserDetailsState(state).assignedMothers)
     const services = useSelector(state => getUserDetailsState(state).services)
 
@@ -463,6 +463,7 @@ export default function useApiReqs() {
                     serviceInfo: services(*)
                 `)
                 .eq('provider_id', user?.id)
+                .neq('status', 'pending')
                 .order("day", { ascending: true, nullsFirst: false })
                 .order('start_time', { ascending: true, nullsFirst: false })
 
@@ -480,6 +481,51 @@ export default function useApiReqs() {
         } catch (error) {
             console.log(error)
             return apiReqsError({ errorMsg: 'Error loading bookings' })
+        }
+    }
+    const updateBookingSummary = async ({ callBack = () => { }, booking_id, summary_note, prescription }) => {
+        try {
+
+            dispatch(appLoadStart())
+
+            const { data, error } = await supabase
+                .from('all_bookings')
+                .update({
+                    summary_note,
+                    prescription
+                })
+                .eq("id", booking_id)
+                .select()
+                .single()
+
+            if(error){
+                console.log(error)
+                throw new Error()
+            }
+
+            const updatedBookings = bookings?.map(b => {
+                if(b?.id === booking_id){
+                    return {
+                        ...b,
+                        summary_note,
+                        prescription
+                    }
+                }
+
+                return b
+            })
+
+            dispatch(setUserDetails({ bookings: updatedBookings }))
+
+            dispatch(appLoadStop())
+
+            callBack && callBack({})
+
+            toast.success("Booking Summary saved!")
+
+        } catch (error) {
+            console.log(error)
+            return apiReqsError({ errorMsg: 'Error setting summary note and prescription' })
         }
     }
 
@@ -895,6 +941,7 @@ export default function useApiReqs() {
 
         //bookings
         getBookings,
+        updateBookingSummary,
 
 
 

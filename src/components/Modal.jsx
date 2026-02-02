@@ -61,7 +61,7 @@ export default function Modal({
                     )}
 
                     {/* Body (Children Content) */}
-                    <div className={`${styles.body || "mt-4"}`}>
+                    <div className={`${styles.body || "mt-4 h-full"}`}>
                         {children}
                     </div>
 

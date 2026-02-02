@@ -52,41 +52,34 @@ export function formatNumberWithCommas(value) {
 }
 
 export function getAppointmentStatus({ status, start_time, duration_secs }) {
-  const now = DateTime.now();
-  const bookingStartTime = DateTime.fromISO(start_time);
+  const now = DateTime.utc();
+  const bookingStartTime = DateTime.fromISO(start_time).toUTC();
   const bookingEndTime = bookingStartTime.plus({ seconds: duration_secs });
 
-  const hasStarted = now >= bookingStartTime;
-  const hasEnded = now > bookingEndTime;
+  const hasStarted = now.toMillis() >= bookingStartTime.toMillis();
+  const hasEnded = now.toMillis() >= bookingEndTime.toMillis();
 
-  // 1) If the appointment is new/awaiting_completion and ongoing
-  if ((status === "new" || status === "awaiting_completion") && hasStarted && !hasEnded) {
+  // Ongoing
+  if (
+    (status === "new" || status === "awaiting_completion") &&
+    hasStarted &&
+    !hasEnded
+  ) {
     return "ongoing";
   }
 
-  // 2) new → either still new or missed
+  // New → missed or still new
   if (status === "new") {
     return hasStarted ? "missed" : "new";
   }
 
-  // 3) cancelled → as is
-  if (status === "cancelled") {
-    return "cancelled";
-  }
+  if (status === "cancelled") return "cancelled";
+  if (status === "completed") return "completed";
+  if (status === "awaiting_completion") return "awaiting_completion";
 
-  // 4) completed → as is
-  if (status === "completed") {
-    return "completed";
-  }
-
-  // 5) awaiting_completion → as is
-  if (status === "awaiting_completion") {
-    return "awaiting_completion";
-  }
-
-  // fallback
   return status;
 }
+
 
 export function formatTo12Hour({ time }) {
   const date = typeof time === "string" ? new Date(time) : time;
@@ -218,6 +211,20 @@ export function formatDate1({ dateISO }) {
     return ""; // fallback if something unexpected happens
   }
 }
+
+export const isToday = (date) => {
+  const dt = DateTime.fromJSDate(new Date(date)).toLocal();
+  return dt.hasSame(DateTime.local(), "day");
+};
+
+/**
+ * Returns true if the date is yesterday (local time)
+ */
+export const isYesterday = (date) => {
+  const dt = DateTime.fromJSDate(new Date(date)).toLocal();
+  const yesterday = DateTime.local().minus({ days: 1 });
+  return dt.hasSame(yesterday, "day");
+};
 
 export function isoToAMPM({ isoString }) {
   const dt = DateTime.fromISO(isoString);

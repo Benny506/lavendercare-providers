@@ -79,6 +79,7 @@ export async function getVendorDetails({ id }){
       serviceInfo: services(*)
     `)
     .eq('provider_id', id)
+    .neq('status', 'pending')
     .order("day", { ascending: true, nullsFirst: false })      
     .order('start_time', { ascending: true, nullsFirst: false })
     .limit(1000)

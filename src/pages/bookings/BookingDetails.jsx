@@ -39,8 +39,6 @@ const BookingDetails = () => {
 
     const { bookings, services } = useSelector(getUserDetailsState)
 
-    console.log(bookings?.[0]?.user_profile)
-
     const [booking, setBooking] = useState(null)
     const [service, setService] = useState(null)
     const [timerStr, setTimerStr] = useState("")
@@ -144,11 +142,16 @@ const BookingDetails = () => {
                         </p>
                     </div>
 
-                    {status === "new" && (
-                        <Button variant="destructive" size="sm">
-                            Cancel
+                    <div className="flex items-center justify-end gap-2">
+                        {/* {status === "new" && (
+                            <Button variant="destructive" size="sm">
+                                Cancel
+                            </Button>
+                        )} */}
+                        <Button onClick={() => navigate('/mothers/single-mother/booking-chat', { state: { bookingInfo: booking, user: booking.user_profile } })} size="sm">
+                            Chat
                         </Button>
-                    )}
+                    </div>
                 </div>
             </motion.div>
 

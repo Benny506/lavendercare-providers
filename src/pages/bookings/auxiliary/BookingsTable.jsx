@@ -1,6 +1,7 @@
 import Table from "@/components/Table";
 import { usePagination } from "@/hooks/usePagination";
 import { getBookingStatusBadge } from "@/lib/utilsJsx";
+import { Minus } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -65,7 +66,15 @@ export default function BookingsTable({ bookings = [] }) {
                 </span>
             ),
         },
-        { key: "location", label: "Location" },
+        {
+            key: "location",
+            label: "Location",
+            render: (row) => (
+                <span>
+                    {row?.is_virtual ? <Minus /> : `${row?.location_info?.address} ${row?.location_info?.city} ${row?.location_info?.state} ${row?.location_info?.country}`}
+                </span>
+            ),
+        },        
         {
             key: "status",
             label: "Status",

@@ -21,64 +21,68 @@ const userDetailsSlice = createSlice({
     },
     reducers: {
         setUserDetails: (state, action) => {
-            if(action?.payload?.profile){
+            if (action?.payload?.profile) {
                 state.profile = action.payload?.profile
             }
 
-            if(action?.payload?.services){
+            if (action?.payload?.services) {
                 state.services = action?.payload?.services
             }
 
-            if(action?.payload?.session){
+            if (action?.payload?.session) {
                 state.session = action?.payload?.session
             }
 
-            if(action?.payload?.user){
+            if (action?.payload?.user) {
                 state.user = action?.payload?.user
-            }            
+            }
 
-            if(action?.payload?.bookings){
+            if (action?.payload?.bookings) {
                 const allAppointments = (action.payload?.bookings || []).map(b => {
 
-                    const { status, start_time, duration } = b
+                    const { status, start_time, duration } = b                
+
+                    const updatedStatus = getAppointmentStatus({
+                        status,
+                        start_time,
+                        duration_secs: duration
+                    })
+
+                    console.log(updatedStatus)
 
                     return {
                         ...b,
-                        status: getAppointmentStatus({
-                            status,
-                            startHour: start_time,
-                            duration_secs: duration 
-                        })
+                        status: updatedStatus
                     }
                 })
-                
+
                 state.bookings = sortByStatusPriority(allAppointments)
             }
 
-            if(action?.payload?.phone_number){
-                const number = action?.payload?.phone_number 
+            if (action?.payload?.phone_number) {
+                const number = action?.payload?.phone_number
 
-                if(number?.phone_number && number?.country_code){
+                if (number?.phone_number && number?.country_code) {
                     state.phone_number.country_code = number?.country_code
                     state.phone_number.phone_number = number?.phone_number
                 }
             }
 
-            if(action?.payload?.bank){
+            if (action?.payload?.bank) {
                 state.bank = action?.payload?.bank
             }
 
-            if(action?.payload?.license){
+            if (action?.payload?.license) {
                 state.license = action?.payload?.license
             }
 
-            if(action?.payload?.assignedMothers){
+            if (action?.payload?.assignedMothers) {
                 state.assignedMothers = action?.payload?.assignedMothers
             }
-            
-            if(action?.payload?.referral){
+
+            if (action?.payload?.referral) {
                 state.referral = action?.payload?.referral
-            }            
+            }
         },
         clearUserDetails: (state, action) => {
             state.profile = null
@@ -88,13 +92,13 @@ const userDetailsSlice = createSlice({
             state.bookings = []
             state.phone_number = {
                 phone_number: null,
-                country_code: null                
+                country_code: null
             }
             state.bank = null
             state.license = {}
             state.assignedMothers = []
             state.referral = null
-        }        
+        }
     }
 })
 

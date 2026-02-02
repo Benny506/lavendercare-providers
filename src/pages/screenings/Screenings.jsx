@@ -14,6 +14,8 @@ import ScreeningsTable from "./auxiliary/ScreeningsTable";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectLabel, SelectValue } from "@/components/ui/select";
 import { DateTime } from "luxon";
+import { getUserDetailsState } from "@/redux/slices/userDetailsSlice";
+import AccessDenied from "@/components/AccessDenied";
 
 
 const MENTAL_HEALTH_TEST_TYPES = [
@@ -93,6 +95,8 @@ const Screenings = () => {
 
     const { getScreenings } = useApiReqs()
 
+    const licenseApproved = useSelector(state => getUserDetailsState(state).license?.status)
+
     const [screenings, setScreenings] = useState([])
 
     const screeningsContainerRef = useRef(null)
@@ -136,6 +140,10 @@ const Screenings = () => {
             toast.error("Error exporting screenings data")
 
         }
+    }
+
+    if(!licenseApproved){
+        return <AccessDenied message={`Only healthcare-licensed providers can view mother's screenings`} />
     }
 
     return (

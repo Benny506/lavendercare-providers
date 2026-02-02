@@ -140,14 +140,6 @@ export default function UserProfile() {
                     <p className="text-grey-600">{is_pregnant === null ? 'TTC' : is_pregnant ? 'Pregnant' : 'Post-partum'}</p>
                     <p className="text-grey-600 capitalize">{city}, {state}, {country}</p>
                 </div>
-                <Button
-                    onClick={() => {
-                        navigate(`/mothers/single-mother/booking-chat`, { state: { user } })
-                    }}
-                    className="bg-primary-600 hover:bg-primary-700 text-white rounded-full px-6 py-3 font-semibold"
-                >
-                    Chat
-                </Button>
             </div>
 
             {/* Health & Pregnancy Info */}

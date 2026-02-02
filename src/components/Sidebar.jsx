@@ -24,6 +24,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const referral = useSelector(state => getUserDetailsState(state).referral)
   const assignedMothers = useSelector(state => getUserDetailsState(state).assignedMothers)
   const user = useSelector(state => getUserDetailsState(state).user)
+  const licenseApproved = useSelector(state => getUserDetailsState(state).license?.status)
 
   const userLogout = async () => {
     try {
@@ -80,7 +81,16 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
   const imageUrl = getPublicImageUrl({ path: profile?.profile_img, bucket_name: 'user_profiles' })
 
-  const navItems = assignedMothers?.length > 0 ? SidebarItems : SidebarItems?.filter(item => item.path !== '/mothers' && item?.path !== '/screenings')
+  const navItems =
+    assignedMothers?.length > 0
+      ?
+      licenseApproved
+      ?
+        SidebarItems
+      :
+        SidebarItems?.filter(item => item?.path !== '/screenings')
+      :
+      SidebarItems?.filter(item => item.path !== '/mothers' && item?.path !== '/screenings')
 
   return (
     <aside className={`fixed h-full overflow-y-auto md:h-max lg:h-screen max-w-max flex flex-col bg-white border-r border-[#E9E9E9] justify-between mt-0.5 transform transition-transform duration-300 z-50 ${isOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:static`}>
@@ -201,7 +211,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           </button>
         </div>
 
-        <div 
+        <div
           onClick={async () => {
             const { success } = await copyToClipboard(referral?.referral_code)
             return success ? toast.success("Copied!") : toast.error("Copying error!")

@@ -68,6 +68,166 @@ export function useDirectChat({ topic, meId }) {
   //   });
   // }
 
+  const sendTempMedia = useCallback(({ file_type, text, duration, toUser }) => {
+
+    try {
+
+      const msg = text
+
+      if (!msg || !file_type) return;
+
+      const tempId = uuidv4();
+
+      const optimisticMessage = {
+        id: tempId,
+        from_user: meId,
+        message: msg,
+        created_at: new Date().toISOString(),
+        delivered_at: null,
+        read_at: null,
+        pending: true,
+        failed: false,
+        file_type,
+        duration: duration ?? null
+      };
+
+      if (!isCommunity) {
+        optimisticMessage.to_user = toUser
+      }
+
+      setMessages((prev) => [...prev, optimisticMessage]);
+
+      return optimisticMessage
+
+    } catch (error) {
+      console.log(error)
+      toast.error("Sending error")
+    }
+
+  }, [meId, topic])
+
+  const updateTempMedia = useCallback(async ({ from_type, msgId, failed, msgObj, user_profile, bookingId, channel_id, community_id }) => {
+    try {
+
+      if (!msgObj) return;
+
+      if (failed) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === msgId ? { ...msg, pending: false, failed: true } : msg
+          )
+        );
+
+      } else {
+        const msgObjClone = { ...msgObj }
+
+        if (isCommunity) {
+          msgObjClone.from_type = from_type || 'admin'
+        }
+
+        setMessages(prev => prev?.map(msg => {
+          if (msg?.id === msgId) {
+            return msgObjClone
+          }
+
+          return msg
+        }))
+
+        const realMessage = { ...msgObjClone }
+
+        realMessage[isCommunity ? 'community_id' : isAdmin ? 'channel_id' : 'booking_id'] =
+          isCommunity ? community_id : isAdmin ? channel_id : bookingId
+
+        delete realMessage.pending
+        delete realMessage.failed
+
+        let inserted = false
+
+        const { error } = await supabase.from(tableName).insert(realMessage);
+        if (!error) inserted = true;
+
+        else {
+          console.log(error)
+        }
+
+        if (!inserted) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === tempId ? { ...msg, pending: false, failed: true } : msg
+            )
+          );
+
+        } else {
+          channelRef.current?.send({
+            type: 'broadcast',
+            event: 'sendMsg',
+            payload: user_profile ? { ...realMessage, user_profile } : realMessage
+          })
+        }
+      }
+
+    } catch (error) {
+      console.log(error)
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === msgId ? { ...msg, pending: false, failed: true } : msg
+        )
+      );
+      toast.error("Sending error")
+    }
+  }, [meId, topic])
+
+  const deleteMessage = async ({ msgId, msg }) => {
+    try {
+
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .eq("id", msgId)
+
+      if (error) {
+        console.log(error)
+        throw new Error()
+      }
+
+      const deletedMsg = {
+        id: msgId, from_user: msg?.from_user, created_at: msg?.created_at
+      }
+
+      setMessages(prev => prev?.map(msg => msg?.id === msgId ? deletedMsg : msg))
+
+      channelRef.current?.send({
+        type: 'broadcast',
+        event: 'updateMsg',
+        payload: deletedMsg
+      })
+
+    } catch (error) {
+      console.log(error)
+      toast.error('Cant seem to delete messages at this time')
+      return;
+    }
+  }
+
+  const retrySend = useCallback(({ msgId }) => {
+    setMessages(prev => prev?.map(msg => {
+      if (msg?.id === msgId) {
+        return { ...msg, pending: true, failed: false }
+      }
+
+      return msg
+    }))
+  }, [meId, topic])
+
+  const cancelRetrySend = useCallback(({ msgId }) => {
+    setMessages(prev => prev?.map(msg => {
+      if (msg?.id === msgId) {
+        return { ...msg, pending: false, failed: true }
+      }
+
+      return msg
+    }))
+  }, [meId, topic])  
 
   const sendMessage = useCallback(
     async ({ text, toUser, bookingId, channel_id, community_id, user_profile }) => {
@@ -386,6 +546,11 @@ export function useDirectChat({ topic, meId }) {
       onMsgReceived(msg)
     })
 
+    channel.on('broadcast', { event: 'updateMsg' }, (payload) => {
+      const msg = payload.payload
+      setMessages((prev) => replaceOptimisticMessages(prev || [], msg));
+    })    
+
     channel.on('broadcast', { event: 'messageRead' }, (payload) => {
       const msg = payload.payload
       console.log(msg)
@@ -595,6 +760,11 @@ export function useDirectChat({ topic, meId }) {
     refreshConnection,
     cleanup,
     loadMessages,
-    canLoadMoreMsgs
+    canLoadMoreMsgs,
+    sendTempMedia, 
+    updateTempMedia,
+    retrySend,
+    cancelRetrySend,
+    deleteMessage
   };
 }

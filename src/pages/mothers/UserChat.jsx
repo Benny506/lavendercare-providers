@@ -1,19 +1,25 @@
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Paperclip, Send, Smile, Mic, ClockFading, MessageCircleWarning, Check, CheckCheck, RotateCw } from "lucide-react";
+import { Paperclip, Send, Smile, Mic, ClockFading, MessageCircleWarning, Check, CheckCheck, RotateCw, Delete, Trash } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { getUserDetailsState } from "@/redux/slices/userDetailsSlice";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useDirectChat } from "@/hooks/chatHooks/useDirectChat";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { formatDate1, isoToAMPM } from "@/lib/utils";
+import { formatDate1, isoToAMPM, isToday, isYesterday } from "@/lib/utils";
 import supabase from "@/database/dbInit";
 import { sendNotifications } from '@/lib/notifications'
 import { appLoadStart, appLoadStop } from "@/redux/slices/appLoadingSlice";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCountdown } from "@/hooks/useCountdown";
 import AudioPlayer from "./auxiliary/AudioPlayer";
+import ProfileImg from "@/components/ProfileImg";
+import { getPublicImageUrl, uploadAsset } from "@/lib/requestApi";
+import MediaDisplay from "./auxiliary/MediaDisplay";
+import FailedMsgModal from "./auxiliary/FailedMsgModal";
+import ConfirmModal from "@/components/ConfirmModal";
+import BookingSummary from "./auxiliary/BookingSummary";
 
 
 
@@ -24,15 +30,17 @@ export default function UserChat() {
 
     const { state } = useLocation()
     const user = state?.user
+    const bookingInfo = state?.bookingInfo
 
     const profile = useSelector(state => getUserDetailsState(state).profile)
     const bookings = useSelector(state => getUserDetailsState(state).bookings)
 
-    const latestBooking = bookings?.[0]
+    const latestBooking = bookings?.filter(b => b?.id === bookingInfo?.id)?.[0]
 
     const topRef = useRef()
     const bottomRef = useRef(null)
     const isAwaitingCompletion = useRef(false)
+    const fileRef = useRef(null)
 
     const selectedChat = latestBooking
     const meId = profile?.id
@@ -40,13 +48,17 @@ export default function UserChat() {
 
     const [input, setInput] = useState("");
     const [showPatientInfo, setShowPatientInfo] = useState(false);
-    const [showSummaryNotesModal, setShowSummaryNotesModal] = useState(false);
+    const [showBookingSummary, setShowBookingSummary] = useState(false);
     const [showSessionEndedModal, setShowSessionEndedModal] = useState(false);
     const [summaryNote, setSummaryNote] = useState('')
+    const [failedMsgModal, setFailedMsgModal] = useState({ visible: false, hide: null })
+    const [confirmDelete, setConfirmDelete] = useState({ visible: false, hide: null })
 
     const {
         status, messages, sendMessage, onlineUsers, insertSubStatus, updateSubStatus,
-        canLoadMoreMsgs, loadMessages, bulkMsgsRead, refreshConnection
+        canLoadMoreMsgs, loadMessages, bulkMsgsRead, refreshConnection,
+        sendTempMedia, updateTempMedia, retrySend, deleteMessage,
+        cancelRetrySend
     } = useDirectChat({ topic: selectedChat?.id, meId, peerId });
 
     const {
@@ -62,15 +74,7 @@ export default function UserChat() {
 
             return;
 
-        }
-
-        // const booking_id = localStorage.getItem('booking_id')
-
-        // if(booking_id == selectedChat?.id){
-        //     const summary_note = localStorage.getItem('summary_note')
-
-        //     setSummaryNote(summary_note)
-        // }               
+        }            
     }, [])
 
     useEffect(() => {
@@ -81,9 +85,22 @@ export default function UserChat() {
         }
     }, [messages]);
 
+    useEffect(() => {
+        if(!selectedChat?.id){
+            toast.error("Appointment not found. Cannot access chat-history")
+            navigate(-1)
+        }
+    }, [])
+
     if (!selectedChat?.id) {
         return <></>
     }
+
+    const openFailedMsgModal = ({ msg }) => setFailedMsgModal({ visible: true, hide: hideFailedMsgModal, msg })
+    const hideFailedMsgModal = () => setFailedMsgModal({ visible: false, hide: null })
+
+    const openConfirmDelete = ({ msg }) => setConfirmDelete({ visible: true, hide: hideConfirmDelete, msg })
+    const hideConfirmDelete = () => setConfirmDelete({ visible: false, hide: null })
 
     const {
         day
@@ -163,14 +180,58 @@ export default function UserChat() {
         setInput('');
     };
 
+    const retry = ({ msg }) => {
+        const { file_type, message, id } = msg
+
+        if (file_type === 'text' || (file_type !== 'text' && !typeof message !== 'object')) {
+            sendMessage({ text: message, fileType: file_type, toUser: peerId, bookingId: selectedChat?.id, oldMsgId: id });
+
+        } else {
+            retrySend({ msgId: msg?.id })
+
+            uploadAsset({
+                file: [message],
+                id: selectedChat?.id,
+                bucket_name: 'chat_media',
+                ext: message?.name.split(".").pop()?.toLowerCase() || "",
+            })
+                .then(({ filePath }) => {
+                    if (!filePath) {
+                        cancelRetrySend({ msgId: msg?.id })
+                        return toast.error('Upload error')
+                    }
+
+                    sendMessage({
+                        text: filePath,
+                        fileType: file_type,
+                        toUser: peerId,
+                        bookingId: meId,
+                        oldMsgId: id,
+                    });
+                })
+                .catch(error => {
+                    console.log(error)
+                    cancelRetrySend({ msgId: msg?.id })
+                    toast.error('Upload error')
+                })
+        }
+    }
+
     const notifyMother = async () => {
         try {
             dispatch(appLoadStart())
 
+            const { data, error } = await supabase.from('user_profiles').select().single().eq('id', peerId)
+
+            if(error){
+                console.log(error)
+                throw new Error()
+            }
+
             await sendNotifications({
-                tokens: [userInfo?.notification_token],
+                tokens: [data?.notification_token],
                 // sound: null,
-                title: `Incoming message from lavendercare vendor provider`,
+                title: `Incoming message from lavendercare provider`,
                 body: `New message detected`,
                 data: {}
             });
@@ -186,6 +247,90 @@ export default function UserChat() {
         }
     }
 
+    const handleFileChange = (e) => {
+        const MAX_SIZE = 15 * 1024 * 1024; // 15MB
+
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Size check
+        if (file.size > MAX_SIZE) {
+            toast.info("File must be less than 15MB");
+            return;
+        }
+
+        const mime = file.type;
+
+        let type = ''
+        let previewUrl = ''
+
+        // Determine type
+        if (mime.startsWith("image/")) {
+            type = "image"
+
+        } else if (mime.startsWith("video/")) {
+            type = "video"
+
+        } else if (
+            mime === "application/pdf" ||
+            mime === "application/msword"
+            ||
+            mime ===
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ) {
+            toast.info("Only images, videos, are allowed")
+            return;
+
+        } else {
+            toast.info("Only images, videos, are allowrd")
+            return;
+        }
+
+        // Store file
+
+        // Create preview URL for media
+
+        const msg = sendTempMedia({
+            file_type: type,
+            text: file,
+            toUser: peerId
+        })
+
+        uploadAsset({
+            file: [file],
+            id: selectedChat?.id,
+            bucket_name: 'chat_media',
+            ext: file?.name.split(".").pop()?.toLowerCase() || ""
+        })
+            .then(data => {
+                const { error, filePaths } = data
+
+                const uploadedFile = filePaths?.[0]
+
+                updateTempMedia({
+                    msgId: msg?.id,
+                    failed: !uploadedFile ? true : false,
+                    msgObj: {
+                        ...msg,
+                        message: uploadedFile
+                    },
+                    bookingId: selectedChat?.id
+                })
+            })
+            .catch(err => {
+                console.log(err)
+                updateTempMedia({
+                    msgId: msg?.id,
+                    failed: true,
+                    msgObj: {
+                        ...msg,
+                        message: uploadedFile
+                    },
+                    bookingId: selectedChat?.id
+                })
+            })
+    };
+
     return (
         <div>
             <div className="flex h-[80vh] bg-gray-50 rounded-2xl">
@@ -200,10 +345,9 @@ export default function UserChat() {
                                 {/* Chat Header */}
                                 <div className="p-4 flex-wrap gap-2 border-b border-gray-200 flex justify-between items-center bg-white">
                                     <div className="flex items-center gap-3">
-                                        <img
-                                            src={user?.profile_img || "/default-avatar.png"}
-                                            alt={user?.name}
-                                            className="w-14 h-14 rounded-full object-cover border"
+                                        <ProfileImg
+                                            profile_img={getPublicImageUrl({ path: user?.profile_img })}
+                                            name={user?.name}
                                         />
                                         <div>
                                             <h2 className="font-semibold text-gray-900">{user?.name}</h2>
@@ -238,7 +382,7 @@ export default function UserChat() {
                                             variant="default"
                                             size="sm"
                                             className="text-white bg-primary-600"
-                                            onClick={() => setShowSummaryNotesModal(true)}
+                                            onClick={() => setShowBookingSummary(true)}
                                         >
                                             Notes
                                         </Button>
@@ -292,45 +436,77 @@ export default function UserChat() {
                                                                 ? 'bg-purple-600 text-white'
                                                                 : 'bg-gray-100 text-gray-900'
                                                                 } rounded-2xl px-4 py-3`}>
-                                                                {file_type === 'audio' ? (
-                                                                    <div>
-                                                                        <AudioPlayer
-                                                                            channelId={selectedChat?.id}
-                                                                            filePath={message}
-                                                                            durationMillis={duration * 1000}
-                                                                            iAmSender={iAmSender}
-                                                                        />
-                                                                    </div>
-                                                                ) : (
-                                                                    <>
-                                                                        <p className="text-sm mb-3">{message}</p>
+                                                                {
+                                                                    file_type === 'audio'
+                                                                        ?
+                                                                        (
+                                                                            <div style={{ minWidth: '240px', minHeight: '20px' }}>
+                                                                                <AudioPlayer
+                                                                                    channelId={selectedChat?.id}
+                                                                                    filePath={message}
+                                                                                    durationMillis={duration * 1000}
+                                                                                    iAmSender={iAmSender}
+                                                                                />
+                                                                            </div>
+                                                                        )
+                                                                        :
+                                                                        file_type === 'image' || file_type === 'video'
+                                                                            ?
+                                                                            (
+                                                                                <div>
+                                                                                    <MediaDisplay
+                                                                                        url={
+                                                                                            typeof message === 'object'
+                                                                                                ?
+                                                                                                URL.createObjectURL(message)
+                                                                                                :
+                                                                                                getPublicImageUrl({ path: message, bucket_name: 'chat_media' })
+                                                                                        }
+                                                                                        type={file_type}
+                                                                                        align={iAmSender ? 'right' : 'left'}
+                                                                                    />
+                                                                                </div>
+                                                                            )
+                                                                            :
+                                                                            (
+                                                                                <div style={{ minWidth: '240px', minHeight: '20px' }}>
+                                                                                    {
+                                                                                        message
+                                                                                            ?
+                                                                                            <p className="text-sm mb-3">{message}</p>
+                                                                                            :
+                                                                                            <p style={{ fontStyle: 'italic' }} className="text-sm mb-3">Message deleted</p>
+                                                                                    }
+                                                                                </div>
+                                                                            )
+                                                                }
 
-                                                                        <div className="flex flex-col items-end justify-end gap-">
-                                                                            <p
-                                                                                style={{
-                                                                                    color: iAmSender ? '#FFF' : "_000"
-                                                                                }}
-                                                                                className="txt-10 m-0 p-0"
-                                                                            >
-                                                                                {isoToAMPM({ isoString: created_at })}
-                                                                            </p>
-
-                                                                            {
-                                                                                iAmSender
-                                                                                &&
-                                                                                (
-                                                                                    seen
-                                                                                        ?
-                                                                                        <CheckCheck size={11} color="#FFF" />
-                                                                                        :
-                                                                                        delivered
-                                                                                        &&
-                                                                                        <Check size={11} color="#FFF" />
-                                                                                )
-                                                                            }
-                                                                        </div>
-                                                                    </>
-                                                                )}
+                                                                <div className="flex flex-col items-end justify-end gap-">
+                                                                    <div
+                                                                        style={{
+                                                                            height: '0.2px',
+                                                                            backgroundColor: iAmSender ? 'white' : 'gray',
+                                                                            width: '100%'
+                                                                        }}
+                                                                        className="mb-2 mt-4"
+                                                                    />
+                                                                    <p
+                                                                        style={{
+                                                                            color: iAmSender ? '#FFF' : "_000"
+                                                                        }}
+                                                                        className="text-xs m-0 p-0"
+                                                                    >
+                                                                        {isoToAMPM({ isoString: created_at })}
+                                                                    </p>
+                                                                    <p
+                                                                        style={{
+                                                                            color: iAmSender ? '#FFF' : "_000"
+                                                                        }}
+                                                                        className="text-xs m-0 p-0"
+                                                                    >
+                                                                        {isToday(created_at) ? 'Today' : isYesterday(created_at) ? 'Yesteday' : formatDate1({ dateISO: created_at })}
+                                                                    </p>
+                                                                </div>
                                                             </div>
 
                                                             <div className="flex items-center justify-end">
@@ -347,15 +523,23 @@ export default function UserChat() {
                                                                         </Tooltip>
                                                                         :
                                                                         failed
-                                                                        &&
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <MessageCircleWarning color="#c41a2b" size={15} />
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent side="top" sideOffset={5}>
-                                                                                Error sending message
-                                                                            </TooltipContent>
-                                                                        </Tooltip>
+                                                                            ?
+                                                                            <Tooltip>
+                                                                                <TooltipTrigger asChild>
+                                                                                    <MessageCircleWarning onClick={() => openFailedMsgModal({ msg })} color="#c41a2b" size={15} />
+                                                                                </TooltipTrigger>
+                                                                                <TooltipContent side="top" sideOffset={5}>
+                                                                                    Error sending message
+                                                                                </TooltipContent>
+                                                                            </Tooltip>
+                                                                            :
+                                                                            (message && iAmSender)
+                                                                            &&
+                                                                            <div style={{}} className="flex items-center justify-end mt-3">
+                                                                                <div onClick={() => openConfirmDelete({ msg })} style={{ borderRadius: '5px' }} className="p-1 bg-white">
+                                                                                    <Trash color="#6F3DCB" />
+                                                                                </div>
+                                                                            </div>
                                                                 }
                                                             </div>
                                                         </div>
@@ -377,6 +561,17 @@ export default function UserChat() {
                                             ?
                                             <div className="p-4 border-t border-gray-200 bg-white">
                                                 <div className="flex items-center gap-3">
+                                                    <input
+                                                        ref={fileRef}
+                                                        type="file"
+                                                        accept="image/*,video/*"
+                                                        style={{ display: "none" }}
+                                                        onChange={(e) => {
+                                                            handleFileChange(e)
+                                                            e.target.value = null
+                                                        }}
+                                                    />
+
                                                     <div className="flex-1 relative">
                                                         <textarea
                                                             value={input}
@@ -384,15 +579,16 @@ export default function UserChat() {
                                                             placeholder="Type a message..."
                                                             className="w-full px-3 py-1 rounded-md bg-gray-50 border-gray-200"
                                                         />
-                                                        <Button
+                                                        {/* <Button
                                                             size="sm"
                                                             variant="ghost"
                                                             className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 rounded-full hover:bg-gray-200"
                                                         >
                                                             <Smile className="w-4 h-4 text-gray-500" />
-                                                        </Button>
+                                                        </Button> */}
                                                     </div>
                                                     <Button
+                                                        onClick={() => fileRef?.current?.click?.()}
                                                         size="sm"
                                                         variant="ghost"
                                                         className="h-10 w-10 p-0 rounded-full hover:bg-gray-100"
@@ -433,8 +629,8 @@ export default function UserChat() {
                 {/* Patient Info Modal */}
 
                 {/* Summary note modal  */}
-                {/* <SummaryNotesModal 
-                    closeModal={() => setShowSummaryNotesModal(false)}
+                {/* <SummaryNotesModal
+                    closeModal={() => setShowBookingSummary(false)}
                     visible={showSummaryNotesModal}
                     booking={selectedChat}
                 /> */}
@@ -447,6 +643,32 @@ export default function UserChat() {
                     summaryNote={summaryNote}
                 /> */}
             </div>
+
+            <FailedMsgModal
+                isOpen={failedMsgModal.visible}
+                onClose={failedMsgModal.hide}
+                onDelete={() => deleteMessage({ msgId: failedMsgModal?.msg?.id, msg: failedMsgModal?.msg })}
+                onResend={() => retry({ msg: failedMsgModal?.msg })}
+            />
+
+            <ConfirmModal
+                modalProps={{
+                    ...confirmDelete,
+                    data: {
+                        yesFunc: () => {
+                            deleteMessage({ msgId: confirmDelete?.msg?.id, msg: confirmDelete?.msg })
+                        },
+                        title: 'Delete this message',
+                        msg: 'This action cannot be undone!'
+                    }
+                }}
+            />
+
+            <BookingSummary 
+                isOpen={showBookingSummary}
+                onClose={() => setShowBookingSummary(false)}
+                bookingInfo={bookingInfo}
+            />
         </div>
     );
 }       
