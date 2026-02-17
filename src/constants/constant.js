@@ -30,6 +30,7 @@ export const SidebarItems = [
 
   // { label: 'Consultations', icon: 'ant-design:message-outlined', path: "/consultations" },  
   { label: 'Screenings', icon: 'material-symbols:note-outline', path: "/screenings" },  
+  { label: 'Products', icon: 'streamline-ultimate-color:products-gifts', path: "https://lavendercare-products-inventory.netlify.app/" },  
 
   // { label: 'Inbox', icon: 'ic:outline-message', path: "/inbox" },
   // { label: 'Wallet', icon: 'ic:outline-account-balance-wallet', path: "wallet" },

@@ -109,6 +109,12 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
             const handleItemClick = () => {
               setIsOpen(false)
+              
+              if(item?.path?.startsWith("https")){
+                window.open(item.path, "_blank")
+                return
+              }
+
               item.path && Navigate(item.path)
             }
 
