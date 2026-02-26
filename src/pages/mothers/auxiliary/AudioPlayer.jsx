@@ -2,6 +2,7 @@ import React from "react";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import { useVoiceNote } from "@/hooks/chatHooks/useVoiceNote";
+import { Loader2 } from "lucide-react";
 
 function formatTime(ms) {
     const totalSeconds = Math.floor(ms / 1000);
@@ -15,6 +16,7 @@ export default function AudioPlayer({ channelId, filePath, durationMillis }) {
         isPlaying,
         playbackPosition,
         currentTrack,
+        loadingTrack,
         playVoiceNote,
         pausePlayBack,
         seekTo,
@@ -22,12 +24,14 @@ export default function AudioPlayer({ channelId, filePath, durationMillis }) {
 
     const isCurrent = currentTrack && currentTrack.filePath === filePath;
     const playingThis = isCurrent && isPlaying;
+    const isLoading = loadingTrack === filePath;
 
     return (
         <div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <button
                     onClick={() => {
+                        if (isLoading) return;
                         if (playingThis) {
                             pausePlayBack();
                         } else {
@@ -41,7 +45,13 @@ export default function AudioPlayer({ channelId, filePath, durationMillis }) {
                         cursor: "pointer",
                     }}
                 >
-                    {playingThis ? "⏸" : "▶️"}
+                    {
+                        isLoading
+                            ?
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            :
+                            (playingThis ? "⏸" : "▶️")
+                    }
                 </button>
 
                 <div style={{ flex: 1 }}>

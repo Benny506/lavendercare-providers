@@ -20,6 +20,7 @@ import MediaDisplay from "./auxiliary/MediaDisplay";
 import FailedMsgModal from "./auxiliary/FailedMsgModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import BookingSummary from "./auxiliary/BookingSummary";
+import { useAudioRecorder } from "@/hooks/chatHooks/useAudioRecorder";
 
 
 
@@ -54,6 +55,8 @@ export default function UserChat() {
     const [failedMsgModal, setFailedMsgModal] = useState({ visible: false, hide: null })
     const [confirmDelete, setConfirmDelete] = useState({ visible: false, hide: null })
 
+    const [recordingDuration, setRecordingDuration] = useState(0); // seconds
+
     const {
         status, messages, sendMessage, onlineUsers, insertSubStatus, updateSubStatus,
         canLoadMoreMsgs, loadMessages, bulkMsgsRead, refreshConnection,
@@ -74,7 +77,7 @@ export default function UserChat() {
 
             return;
 
-        }            
+        }
     }, [])
 
     useEffect(() => {
@@ -86,7 +89,7 @@ export default function UserChat() {
     }, [messages]);
 
     useEffect(() => {
-        if(!selectedChat?.id){
+        if (!selectedChat?.id) {
             toast.error("Appointment not found. Cannot access chat-history")
             navigate(-1)
         }
@@ -223,7 +226,7 @@ export default function UserChat() {
 
             const { data, error } = await supabase.from('user_profiles').select().single().eq('id', peerId)
 
-            if(error){
+            if (error) {
                 console.log(error)
                 throw new Error()
             }
@@ -246,6 +249,120 @@ export default function UserChat() {
             dispatch(appLoadStop())
         }
     }
+
+    const handleVoiceNoteStop = async (blobUrl, blob) => {
+        let audioBlob = blob;
+        if (!audioBlob && blobUrl) {
+            try {
+                const res = await fetch(blobUrl);
+                audioBlob = await res.blob();
+            } catch (e) {
+                console.error("Failed to fetch blob from url", e);
+                return;
+            }
+        }
+        if (!audioBlob) return;
+
+        // Check if recording was cancelled
+        if (isRecordingCancelled.current) {
+            isRecordingCancelled.current = false;
+            return;
+        }
+
+        // Get Duration
+        const getDuration = (blob) => {
+            return new Promise((resolve) => {
+                const audio = document.createElement("audio");
+                const objectUrl = URL.createObjectURL(blob);
+                audio.src = objectUrl;
+                audio.onloadedmetadata = () => {
+                    const duration = audio.duration;
+                    URL.revokeObjectURL(objectUrl);
+                    resolve(duration); // in seconds
+                };
+                audio.onerror = () => {
+                    resolve(null);
+                }
+            });
+        };
+
+        const duration = await getDuration(audioBlob) || recordingDurationRef.current;
+
+        const type = 'audio'
+
+        // Determine correct extension based on blob type
+        const extension = 'wav';
+        const mimeType = 'audio/wav';
+
+        // Use the correct mime type for the File constructor
+        const file = new File([audioBlob], `voice_note_${Date.now()}.${extension}`, { type: mimeType });
+
+        const msg = sendTempMedia({
+            file_type: type,
+            text: file,
+            duration: duration,
+            toUser: peerId
+        })
+
+        uploadAsset({
+            file: [file],
+            id: selectedChat?.id,
+            bucket_name: 'voice_notes',
+            ext: extension
+        })
+            .then(data => {
+                const { error, filePaths } = data
+
+                const uploadedFile = filePaths?.[0]
+
+                updateTempMedia({
+                    msgId: msg?.id,
+                    failed: !uploadedFile ? true : false,
+                    msgObj: {
+                        ...msg,
+                        message: uploadedFile
+                    },
+                    bookingId: selectedChat?.id
+                })
+            })
+            .catch(err => {
+                console.log(err)
+                toast.error("Failed to upload voice note");
+                updateTempMedia({
+                    msgId: msg?.id,
+                    failed: true,
+                    msgObj: {
+                        ...msg,
+                        message: null
+                    },
+                    bookingId: selectedChat?.id
+                })
+            })
+    }
+
+    const { status: recordingStatus, startRecording, stopRecording, mediaBlobUrl, error: recorderError } = useAudioRecorder({ onStop: handleVoiceNoteStop });
+
+    useEffect(() => {
+        if (recorderError) {
+            toast.error(recorderError);
+        }
+    }, [recorderError]);
+
+    useEffect(() => {
+        let interval;
+        if (recordingStatus === "recording") {
+            setRecordingDuration(0);
+            recordingDurationRef.current = 0;
+            interval = setInterval(() => {
+                setRecordingDuration((prev) => prev + 1);
+                recordingDurationRef.current += 1;
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [recordingStatus]);
+
+    const isRecordingCancelled = useRef(false);
+    const recordingDurationRef = useRef(0);
 
     const handleFileChange = (e) => {
         const MAX_SIZE = 15 * 1024 * 1024; // 15MB
@@ -329,6 +446,12 @@ export default function UserChat() {
                     bookingId: selectedChat?.id
                 })
             })
+    };
+
+    const formatDuration = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     return (
@@ -572,36 +695,63 @@ export default function UserChat() {
                                                         }}
                                                     />
 
-                                                    <div className="flex-1 relative">
-                                                        <textarea
-                                                            value={input}
-                                                            onChange={(e) => setInput(e.target.value)}
-                                                            placeholder="Type a message..."
-                                                            className="w-full px-3 py-1 rounded-md bg-gray-50 border-gray-200"
-                                                        />
-                                                        {/* <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 rounded-full hover:bg-gray-200"
-                                                        >
-                                                            <Smile className="w-4 h-4 text-gray-500" />
-                                                        </Button> */}
-                                                    </div>
-                                                    <Button
-                                                        onClick={() => fileRef?.current?.click?.()}
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="h-10 w-10 p-0 rounded-full hover:bg-gray-100"
-                                                    >
-                                                        <Paperclip className="w-4 h-4 text-gray-500" />
-                                                    </Button>
-                                                    <Button
-                                                        onClick={sendNow}
-                                                        size="sm"
-                                                        className="h-10 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-full"
-                                                    >
-                                                        Send
-                                                    </Button>
+                                                    {
+                                                        recordingStatus === 'recording'
+                                                            ?
+                                                            <div className="flex items-center gap-3 w-full">
+                                                                <div className="flex-1 flex items-center justify-between bg-gray-100 rounded-md px-4 py-2 text-red-500 animate-pulse">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Mic className="w-4 h-4" />
+                                                                        <span className="text-sm font-medium">Recording...</span>
+                                                                    </div>
+                                                                    <span className="text-sm font-mono">{formatDuration(recordingDuration)}</span>
+                                                                </div>
+                                                                <Button variant="ghost" onClick={() => { isRecordingCancelled.current = true; stopRecording(); }}>
+                                                                    <Trash className="w-5 h-5 text-gray-500 hover:text-red-500" />
+                                                                </Button>
+                                                                <Button onClick={stopRecording} size="sm" className="h-10 w-10 p-0 rounded-full bg-purple-600 hover:bg-purple-700 text-white">
+                                                                    <Send className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
+                                                            :
+                                                            <>
+                                                                <div className="flex-1 relative">
+                                                                    <textarea
+                                                                        value={input}
+                                                                        onChange={(e) => setInput(e.target.value)}
+                                                                        placeholder="Type a message..."
+                                                                        className="w-full px-3 py-1 rounded-md bg-gray-50 border-gray-200"
+                                                                    />
+                                                                </div>
+                                                                <Button
+                                                                    onClick={() => fileRef?.current?.click?.()}
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-10 w-10 p-0 rounded-full hover:bg-gray-100"
+                                                                >
+                                                                    <Paperclip className="w-4 h-4 text-gray-500" />
+                                                                </Button>
+                                                                {
+                                                                    input.trim().length > 0
+                                                                        ?
+                                                                        <Button
+                                                                            onClick={sendNow}
+                                                                            size="sm"
+                                                                            className="h-10 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-full"
+                                                                        >
+                                                                            Send
+                                                                        </Button>
+                                                                        :
+                                                                        <Button
+                                                                            onClick={startRecording}
+                                                                            size="sm"
+                                                                            className="h-10 w-10 p-0 rounded-full bg-purple-600 hover:bg-purple-700 text-white"
+                                                                        >
+                                                                            <Mic className="w-4 h-4" />
+                                                                        </Button>
+                                                                }
+                                                            </>
+                                                    }
                                                 </div>
                                             </div>
                                             :
@@ -664,7 +814,7 @@ export default function UserChat() {
                 }}
             />
 
-            <BookingSummary 
+            <BookingSummary
                 isOpen={showBookingSummary}
                 onClose={() => setShowBookingSummary(false)}
                 bookingInfo={bookingInfo}

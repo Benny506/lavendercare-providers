@@ -9,6 +9,7 @@ export const VoiceNoteProvider = ({ children }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackPosition, setPlaybackPosition] = useState(0);
     const [playbackDuration, setPlaybackDuration] = useState(0);
+    const [loadingTrack, setLoadingTrack] = useState(null);
 
     // --- Attach listeners once ---
     useEffect(() => {
@@ -19,16 +20,26 @@ export const VoiceNoteProvider = ({ children }) => {
             setIsPlaying(false);
             setPlaybackPosition(0);
             setCurrentTrack(null);
+            setLoadingTrack(null);
         };
-        const onLoadedMetadata = () => setPlaybackDuration(audio.duration * 1000);
+        const onLoadedMetadata = () => {
+            setPlaybackDuration(audio.duration * 1000)
+            setLoadingTrack(null);
+        };
         const onPlay = () => setIsPlaying(true);
         const onPause = () => setIsPlaying(false);
+        const onWaiting = () => {
+            if (currentTrack) setLoadingTrack(currentTrack.filePath);
+        };
+        const onCanPlay = () => setLoadingTrack(null);
 
         audio.addEventListener("timeupdate", onTimeUpdate);
         audio.addEventListener("ended", onEnded);
         audio.addEventListener("loadedmetadata", onLoadedMetadata);
         audio.addEventListener("play", onPlay);
         audio.addEventListener("pause", onPause);
+        audio.addEventListener("waiting", onWaiting);
+        audio.addEventListener("canplay", onCanPlay);
 
         return () => {
             audio.removeEventListener("timeupdate", onTimeUpdate);
@@ -36,6 +47,8 @@ export const VoiceNoteProvider = ({ children }) => {
             audio.removeEventListener("loadedmetadata", onLoadedMetadata);
             audio.removeEventListener("play", onPlay);
             audio.removeEventListener("pause", onPause);
+            audio.removeEventListener("waiting", onWaiting);
+            audio.removeEventListener("canplay", onCanPlay);
         };
     }, []);
 
@@ -55,25 +68,36 @@ export const VoiceNoteProvider = ({ children }) => {
             }
 
             // Fetch the public URL
-            const { publicUrl, error } = await getPublicUrl({
-                filePath,
-                bucket_name: "voice_notes",
-            });
+            let urlToPlay = null;
 
-            if (!publicUrl || error) {
-                console.error("Error fetching public URL", error);
-                return;
+            setLoadingTrack(filePath);
+
+            if (typeof filePath === 'object') {
+                urlToPlay = URL.createObjectURL(filePath);
+            } else {
+                const { publicUrl, error } = await getPublicUrl({
+                    filePath,
+                    bucket_name: "voice_notes",
+                });
+
+                if (!publicUrl || error) {
+                    console.error("Error fetching public URL", error);
+                    setLoadingTrack(null);
+                    return;
+                }
+                urlToPlay = publicUrl;
             }
 
             // Load the new track
-            audio.src = publicUrl;
+            audio.src = urlToPlay;
             audio.load();
 
-            setCurrentTrack({ channelId, filePath, uri: publicUrl, durationMillis });
+            setCurrentTrack({ channelId, filePath, uri: urlToPlay, durationMillis });
 
             await audio.play();
         } catch (err) {
             console.error("playVoiceNote failed:", err);
+            setLoadingTrack(null);
         }
     }
 
@@ -114,6 +138,7 @@ export const VoiceNoteProvider = ({ children }) => {
                 playbackPosition,
                 playbackDuration,
                 currentTrack,
+                loadingTrack,
                 playVoiceNote,
                 stopPlayback,
                 pausePlayBack,
