@@ -179,7 +179,7 @@ export default function UserChat() {
         // }
 
         if (!input.trim()) return;
-        sendMessage({ text: input.trim(), toUser: peerId, bookingId: selectedChat?.id });
+        sendMessage({ text: input, toUser: peerId, bookingId: selectedChat?.id });
         setInput('');
     };
 
@@ -720,7 +720,7 @@ export default function UserChat() {
                                                                         value={input}
                                                                         onChange={(e) => setInput(e.target.value)}
                                                                         placeholder="Type a message..."
-                                                                        className="w-full px-3 py-1 rounded-md bg-gray-50 border-gray-200"
+                                                                        className="w-full px-3 py-1 rounded-md bg-gray-50 border-gray-200 whitespace-pre-wrap"
                                                                     />
                                                                 </div>
                                                                 <Button

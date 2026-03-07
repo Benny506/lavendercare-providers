@@ -241,7 +241,7 @@ export function useDirectChat({ topic, meId }) {
         const optimisticMessage = {
           id: tempId,
           from_user: meId,
-          message: text.trim(),
+          message: text,
           created_at: new Date().toISOString(),
           delivered_at: null,
           read_at: null,
