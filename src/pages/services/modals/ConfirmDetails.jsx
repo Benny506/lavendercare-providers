@@ -81,16 +81,15 @@ const ConfirmDetails = ({
   const handleConfirm = () => {
     try {
       const { details } = info
-      const { serviceInfo, availability } = details
+      const { serviceInfo } = details
 
-      if(!serviceInfo || !availability){
+      if(!serviceInfo){
         toast.error("Some fields were not field, go back and confirm")
         return
       }
 
       const requestInfo = {
-        ...serviceInfo,
-        availability
+        ...serviceInfo
       }
 
       setApiReqs({ 

@@ -1,24 +1,27 @@
 import ErrorMsg1 from "@/components/ErrorMsg1";
 import Modal from "@/components/Modal"
-import { currencies } from "@/constants/constant";
-import { formatNumberWithCommas, secondsToLabel, splitSeconds, timeToAMPM_FromHour_Duration } from "@/lib/utils";
 import { ErrorMessage, Formik } from "formik";
-import { X } from "lucide-react";
-import React, { useState } from "react";
-import { useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { toast } from "react-toastify";
+import { Info, Tag } from "lucide-react";
+import React from "react";
 import * as yup from 'yup'
-
-const minDuration = 15 * 60
+import DurationPicker from "@/components/ui/DurationPicker";
 
 const ServiceType = ({
     isOpen,
     hide,
     info = {},
     continueBtnText,
+    scheduling_mode,
     handleContinueBtnClick = () => { }
 }) => {
+    // Mode-specific logic
+    const isInstant = scheduling_mode === "instant";
+    const isLogistics = scheduling_mode === "logistics";
+    const isBlock = scheduling_mode === "block";
+    const isProgram = scheduling_mode === "program";
+
+    // Instant is ALWAYS virtual. Others are NEVER virtual.
+    const is_virtual = isInstant;
 
     return (
         <>
@@ -27,199 +30,139 @@ const ServiceType = ({
                     enableReinitialize
                     validationSchema={
                         yup.object().shape({
-                            // pricing_type: yup.string().required('Pricing type is required'),
-                            currency: yup.string().required("Currency is required"),
-                            // type_name: yup.string().required("Type name is required"),
-                            price: yup.number("Must be a valid number").min(1, "Cannot be less than 1").required("Price is required"),
-                            duration_hour: yup
-                                .number("Must be a valid number"),
-                            duration_minutes: yup
-                                .number("Must be a valid number")
-                                .max(59, "Minutes cannot exceed 59"),
-                            is_virtual: yup
-                                .boolean()
-                                .required("Please specify if this service is virtual"),
+                            type_name: yup.string().required("Give this tier a name (e.g. Basic Session)"),
+                            price: yup.number().required("How much do you charge?").min(1, "Price must be at least 1"),
+                            duration: yup.number().required("How long is this session/shift?").min(1, "Must have a duration"),
+                            max_duration: isLogistics 
+                                ? yup.number().required("When will it be ready?").min(1, "Must specify a return window")
+                                : yup.number(),
+                        }).test('program-min-days', 'Programs must be at least 2 days long', function(values) {
+                            if (isProgram && values.duration < 2 * 24 * 60 * 60) {
+                                return this.createError({ path: 'duration', message: 'Programs must be at least 2 days' });
+                            }
+                            return true;
                         })
                     }
                     initialValues={{
-                        currency: info?.currency || "",
-                        price: info?.price || "",
-                        // type_name: info?.type_name,
-                        duration_hour: info?.duration ? splitSeconds(info?.duration)?.hour : "",
-                        duration_minutes: info?.duration ? splitSeconds(info?.duration)?.minutes : "",
-                        is_virtual: info?.is_virtual || false
+                        type_name: info?.type_name || "",
+                        price: info?.price || info?.fee || "",
+                        duration: info?.duration || "", // In seconds
+                        max_duration: info?.max_duration || 0,
+                        min_turnaround: info?.min_turnaround || 0,
+                        buffer_time: info?.buffer_time || 0,
+                        currency: info?.currency || "NGN",
+                        is_virtual: is_virtual,
                     }}
-                    onSubmit={(values, { resetForm }) => {
-                        const hourSecs = (values.duration_hour ? (Number(values.duration_hour) * 60 * 60) : 0)
-                        const minSecs = (values.duration_minutes ? (Number(values.duration_minutes) * 60) : 0)
-
-                        const duration = hourSecs + minSecs
-
-                        if (isNaN(duration)) return toast.error("Duration inputs are invalid, recheck!");
-
-                        if(hourSecs < 0 || minSecs < 0) return toast.error("Hour and/or minutes cannot be negative")
-
-                        if (duration < minDuration) return toast.error("Duration must be at least 15mins!");
-
-                        const requestInfo = {
-                            currency: values.currency,
-                            price: values.price,
-                            duration,
-                            type_name: values.type_name,
-                            is_virtual: values?.is_virtual
-                        }
-
+                    onSubmit={values => {
                         handleContinueBtnClick({
-                            requestInfo,
+                            requestInfo: { ...values, is_virtual },
                             info
                         })
-
-                        // resetForm()
                     }}
                 >
                     {({ handleBlur, handleChange, handleSubmit, values, setFieldValue }) => (
                         <Modal
-                            title="Set Duration & Fees"
-                            // primaryButton="Go back"
-                            secondaryButton={continueBtnText || "Save"}
+                            title={isInstant ? "Set Instant Session Pricing" : isProgram ? "Set Program Duration & Fee" : "Set Pricing & Timing"}
+                            secondaryButton={continueBtnText || "Save Tier"}
                             onClose={hide}
                             secondaryButtonFunc={handleSubmit}
-                            // primaryButtonFunc={goBackAStep}
                             styles={{
-                                wrapper: "max-w-sm relative",
+                                wrapper: "max-w-md relative",
                                 content: "relative",
-                                title: "text-lg font-bold text-left text-black relative",
-                                closeIconWrapper: "absolute top-6 right-5 z-10",
-                                closeButton: "text-grey-500 hover:text-grey-700 p-1 cursor-pointer",
-                                closeIcon: "w-6 h-6",
+                                title: "text-xl font-bold text-left text-black relative",
                                 footer: "flex gap-6 mt-10 w-full font-bold",
-                                primaryButton: "w-full px-5 py-3  bg-primary-50 text-primary-700 rounded-4xl",
-                                secondaryButton: "w-full px-5 py-3  text-grey-50 bg-primary-500 rounded-4xl",
+                                secondaryButton: "w-full px-5 py-3 text-white bg-primary-600 rounded-full hover:bg-primary-700 transition-all shadow-lg shadow-primary-200",
                             }}
                         >
-                            <div className="space-y-4">
-                                {/* <div>
-                                    <label className="block text-sm font-medium">Pricing type</label>
-                                    <select 
-                                        name="pricing_type"
-                                        value={values.pricing_type}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        className="w-full border border-gray-300 rounded-md p-2 mt-1 focus:outline-none"
-                                    >
-                                        <option value={""} disabled selected>Select</option>
-                                        <option value={'fixed'}>Fixed</option>
-                                        <option value={'hourly'}>Hourly</option>
-                                    </select>
-                                    <ErrorMessage name="pricing_type">
-                                        { errorMsg => <ErrorMsg1 errorMsg={errorMsg} /> }
-                                    </ErrorMessage>
-                                </div> */}
-
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        name="is_virtual"
-                                        checked={values.is_virtual || false}
-                                        onChange={e => {
-                                            setFieldValue("is_virtual", e.target.checked)
-                                        }}
-                                        className="h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                                    />
-                                    <label className="text-sm font-medium">Rendered virtually ?</label>
-                                    <ErrorMessage name="is_virtual">
-                                        {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
-                                    </ErrorMessage>
+                            <div className="space-y-6">
+                                {/* Guidance Tip */}
+                                <div className="bg-primary-50 p-4 rounded-xl flex gap-3 items-start border border-primary-100">
+                                    <Info className="text-primary-500 shrink-0 mt-0.5" size={18} />
+                                    <p className="text-xs text-primary-800 leading-relaxed">
+                                        {isInstant && "Instant sessions are 1-on-1 virtual calls. Mothers book these for immediate help."}
+                                        {isProgram && "Programs are long-term commitments (at least 2 days). Perfect for specialized care packages."}
+                                        {isLogistics && "For logistics, mothers want to know how soon they'll get their items back."}
+                                        {isBlock && "Blocks allow mothers to book you for a set number of hours or days."}
+                                    </p>
                                 </div>
 
-                                {/* <div className="">
-                                    <label className="block text-sm font-medium">Session-type name</label>
+                                {/* Tier Name */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                        <Tag size={16} className="text-gray-400" />
+                                        Tier Name
+                                    </label>
                                     <input
                                         name="type_name"
                                         value={values.type_name}
                                         onChange={handleChange}
                                         onBlur={handleBlur}
-                                        type="text"
-                                        placeholder="basic, standard, premium...?"
-                                        className="w-full border border-gray-300 rounded-md p-2 mt-1 focus:outline-none"
+                                        placeholder="e.g. Standard Session, Weekend Premium"
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all shadow-sm"
                                     />
                                     <ErrorMessage name="type_name">
                                         {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
                                     </ErrorMessage>
-                                </div> */}
+                                </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium">Currency</label>
-                                    <select
-                                        name="currency"
-                                        value={values.currency}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        className="w-full border border-gray-300 rounded-md p-2 mt-1 focus:outline-none"
-                                    >
-                                        <option value={""} disabled selected>Select</option>
-                                        {
-                                            currencies.map((c, cIndex) => (
-                                                <option
-                                                    key={cIndex}
-                                                    value={c}
-                                                >
-                                                    {c}
-                                                </option>
-                                            ))
-                                        }
-                                    </select>
-                                    <ErrorMessage name="currency">
+                                {/* Duration Picker */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700">
+                                        {isInstant ? "Session Length" : isProgram ? "Program Length" : "Shift Duration"}
+                                    </label>
+                                    <DurationPicker
+                                        value={values.duration}
+                                        onChange={(val) => setFieldValue("duration", val)}
+                                        unit={isProgram ? "days" : "hours"}
+                                        label={null} // Label is handled by parent
+                                    />
+                                    <ErrorMessage name="duration">
                                         {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
                                     </ErrorMessage>
                                 </div>
 
-                                <div className="">
-                                    <label className="block text-sm font-medium">Hour duration</label>
-                                    <input
-                                        name="duration_hour"
-                                        value={values.duration_hour}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        type="number"
-                                        placeholder="0.00"
-                                        className="w-full border border-gray-300 rounded-md p-2 mt-1 focus:outline-none"
-                                    />
-                                    <ErrorMessage name="duration_hour">
-                                        {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
-                                    </ErrorMessage>
-                                </div>
+                                {/* Logistics specific: Delivery window */}
+                                {isLogistics && (
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-gray-700">Delivery Window</label>
+                                        <DurationPicker
+                                            value={values.max_duration}
+                                            onChange={(val) => setFieldValue("max_duration", val)}
+                                            label={null}
+                                        />
+                                        <p className="text-xs text-gray-500 italic mt-1">When should the mother expect their items back?</p>
+                                        <ErrorMessage name="max_duration">
+                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
+                                        </ErrorMessage>
+                                    </div>
+                                )}
 
-                                <div className="">
-                                    <label className="block text-sm font-medium">Additional minutes</label>
-                                    <input
-                                        name="duration_minutes"
-                                        value={values.duration_minutes}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        type="number"
-                                        placeholder="0.00"
-                                        className="w-full border border-gray-300 rounded-md p-2 mt-1 focus:outline-none"
-                                    />
-                                    <ErrorMessage name="duration_minutes">
-                                        {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
-                                    </ErrorMessage>
-                                </div>
-
-                                <div className="">
-                                    <label className="block text-sm font-medium">Price</label>
-                                    <input
-                                        name="price"
-                                        value={values.price}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        type="number"
-                                        placeholder="0.00"
-                                        className="w-full border border-gray-300 rounded-md p-2 mt-1 focus:outline-none"
-                                    />
+                                {/* Pricing */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700">Price (NGN)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-400">₦</span>
+                                        <input
+                                            type="number"
+                                            name="price"
+                                            value={values.price}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            placeholder="e.g. 5000"
+                                            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all shadow-sm"
+                                        />
+                                    </div>
                                     <ErrorMessage name="price">
                                         {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
                                     </ErrorMessage>
+                                </div>
+
+                                {/* Status Info */}
+                                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                    <div className={`w-2 h-2 rounded-full ${is_virtual ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                                    <p className="text-xs font-medium text-gray-600">
+                                        This tier will be <span className="text-gray-900 font-bold">{is_virtual ? "Virtual" : "Physical"}</span>
+                                    </p>
                                 </div>
                             </div>
                         </Modal>
@@ -230,4 +173,4 @@ const ServiceType = ({
     )
 }
 
-export default ServiceType
+export default ServiceType;

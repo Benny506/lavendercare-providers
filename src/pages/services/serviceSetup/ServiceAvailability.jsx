@@ -1,131 +1,92 @@
-import ErrorMsg1 from "@/components/ErrorMsg1";
-import HourSelect from "@/components/HourSelect";
-import Card from "@/components/ui/Card";
-import InputGroup from "@/components/ui/InputGroup";
-import { extractHour_FromHHMM, hourNumberToHHMM, timeToAMPM_FromHour } from "@/lib/utils";
-import { ErrorMessage } from "formik";
-import { Clock } from "lucide-react";
-import { useState } from "react";
+import React from "react";
+import { Icon } from "@iconify/react";
 
-const getEmptyDays = (availability) =>
-    Object.keys(availability).filter(
-        day =>
-            availability[day].opening == null ||
-            availability[day].closing == null
-    );
+export default function ServiceAvailability({ availability, setFieldValue }) {
+    // Rigid Monday-first order
+    const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+    const handleTimeChange = (day, type, value) => {
+        setFieldValue(`availability.${day}.${type}`, value);
+    };
 
-export default function ServiceAvailability({
-    availability = {},
-    setFieldValue
-}) {
-
-    const [selectedDay, setSelectedDay] = useState('monday')
+    const toggleDay = (day) => {
+        const isCurrentlyActive = availability[day]?.opening || availability[day]?.closing;
+        if (isCurrentlyActive) {
+            setFieldValue(`availability.${day}.opening`, "");
+            setFieldValue(`availability.${day}.closing`, "");
+        } else {
+            setFieldValue(`availability.${day}.opening`, "08:00");
+            setFieldValue(`availability.${day}.closing`, "17:00");
+        }
+    };
 
     return (
-        <Card
-            title="Service Availability"
-            subtitle="Set opening and closing hours for each day of the week"
-            icon={Clock}
-        >
-            <div className="flex flex-col gap-6">
-                {/* Days of the week horizontal scroll */}
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300">
-                    {Object.keys(availability).map(day => {
-                        const active = selectedDay === day;
-                        return (
-                            <button
-                                key={day}
-                                type="button"
-                                onClick={() => setSelectedDay(day)}
-                                className={`flex-shrink-0 px-4 py-2 rounded-lg font-semibold text-sm transition ${active
-                                    ? "bg-primary-500 text-white shadow-md"
-                                    : "border border-gray-300 hover:bg-gray-100"
-                                    }`}
-                            >
-                                {day.charAt(0).toUpperCase() + day.slice(1)}
-                            </button>
-                        );
-                    })}
+        <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-8">
+                <div className="p-2 bg-primary-50 rounded-xl text-primary-600">
+                    <Icon icon="material-symbols:calendar-clock-outline-rounded" width="24" height="24" />
                 </div>
-
-                {/* Current hours display */}
-                <div className="bg-gray-50 p-3 rounded-md border border-gray-200 shadow-sm">
-                    <p className="text-sm text-gray-600">
-                        {availability[selectedDay]?.opening != null
-                            ? `Currently: ${timeToAMPM_FromHour({ hour: availability[selectedDay].opening })} - ${timeToAMPM_FromHour({ hour: availability[selectedDay].closing })}`
-                            : "No hours set yet"}
-                    </p>
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900">Working Hours</h2>
+                    <p className="text-sm text-gray-500">Define which days and times you are available for bookings.</p>
                 </div>
-
-                {/* Hour Inputs */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputGroup label="Opening Hour">
-                        <HourSelect
-                            name={`availability.${selectedDay}.opening`}
-                            value={hourNumberToHHMM(availability[selectedDay]?.opening)}
-                            onChange={e => {
-                                const hour = extractHour_FromHHMM({ hourString: e.target.value });
-                                setFieldValue(`availability.${selectedDay}.opening`, hour);
-                            }}
-                        />
-                    </InputGroup>
-
-                    <InputGroup label="Closing Hour">
-                        <HourSelect
-                            name={`availability.${selectedDay}.closing`}
-                            value={hourNumberToHHMM(availability[selectedDay]?.closing)}
-                            minHour={availability[selectedDay]?.opening}
-                            onChange={e => {
-                                const hour = extractHour_FromHHMM({ hourString: e.target.value });
-                                setFieldValue(`availability.${selectedDay}.closing`, hour);
-                            }}
-                        />
-                    </InputGroup>
-                </div>
-
-                {/* Helper / Info */}
-                <p className="text-xs text-gray-400 mt-1">
-                    Set opening and closing hours for each day. Leave empty if the service is unavailable.
-                </p>
-
-                <ErrorMessage name={`availability`}>
-                    {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
-                </ErrorMessage>
             </div>
 
-            {(() => {
-                const emptyDays = Object.keys(availability).filter(day =>
-                    !availability[day]?.opening && !availability[day]?.closing
-                );
+            <div className="space-y-4">
+                {dayOrder.map((day) => {
+                    const isActive = availability[day]?.opening || availability[day]?.closing;
+                    
+                    return (
+                        <div 
+                            key={day}
+                            className={`flex flex-col md:flex-row md:items-center justify-between p-4 rounded-2xl border transition-all ${
+                                isActive ? 'border-primary-100 bg-primary-50/20' : 'border-gray-50 bg-gray-50/30 grayscale'
+                            }`}
+                        >
+                            <div className="flex items-center gap-4 mb-4 md:mb-0 min-w-[150px]">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleDay(day)}
+                                    className={`w-12 h-6 rounded-full relative transition-colors ${
+                                        isActive ? 'bg-primary-600' : 'bg-gray-300'
+                                    }`}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${
+                                        isActive ? 'left-7' : 'left-1'
+                                    }`} />
+                                </button>
+                                <span className="font-bold text-gray-900 capitalize">{day}</span>
+                            </div>
 
-                const current = availability[selectedDay];
-
-                const canApply =
-                    current?.opening &&
-                    current?.closing &&
-                    emptyDays.length > 0 &&
-                    emptyDays.includes(selectedDay) === false;
-
-                if (!canApply) return null;
-
-                return (
-                    <button
-                        type="button mt-3"
-                        className="px-4 py-2 bg-primary-500 text-white text-sm rounded-md shadow hover:bg-primary-600 transition"
-                        onClick={() => {
-                            Object.keys(availability).forEach(day => {
-                                if (!availability[day].opening && !availability[day].closing) {
-                                    setFieldValue(`availability.${day}.opening`, current.opening);
-                                    setFieldValue(`availability.${day}.closing`, current.closing);
-                                }
-                            });
-                        }}
-                    >
-                        Apply these hours to remaining days
-                    </button>
-                );
-            })()}
-        </Card>
-    )
+                            <div className="flex items-center gap-3">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase ml-1">Opens</span>
+                                    <input
+                                        type="time"
+                                        value={availability[day]?.opening || ""}
+                                        onChange={(e) => handleTimeChange(day, 'opening', e.target.value)}
+                                        disabled={!isActive}
+                                        className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-50"
+                                    />
+                                </div>
+                                <div className="mt-4 text-gray-300">
+                                    <Icon icon="material-symbols:arrow-right-alt-rounded" width="20" />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase ml-1">Closes</span>
+                                    <input
+                                        type="time"
+                                        value={availability[day]?.closing || ""}
+                                        onChange={(e) => handleTimeChange(day, 'closing', e.target.value)}
+                                        disabled={!isActive}
+                                        className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-primary-500 outline-none disabled:opacity-50"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
 }

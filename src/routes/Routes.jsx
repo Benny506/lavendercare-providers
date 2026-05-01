@@ -26,8 +26,9 @@ import Support from "@/pages/support/Support";
 import ServiceSetup from "@/pages/services/serviceSetup/ServiceSetup";
 import UserProfile from "@/pages/mothers/UserProfile";
 import Users from "@/pages/mothers/Users";
-import Screenings from "@/pages/screenings/Screenings";
-import SingleScreening from "@/pages/screenings/SingleScreening";
+import Screenings from "../pages/screenings/Screenings";
+import SingleScreening from "../pages/screenings/SingleScreening";
+import Availability from "../pages/availability/Availability";
 import UserChat from "@/pages/mothers/UserChat";
 
 const AppRoutes = () => {
@@ -62,6 +63,7 @@ const AppRoutes = () => {
           <Route path="mothers" element={<Users />} />
           <Route path="mothers/single-mother" element={<UserProfile />} />
           <Route path="mothers/single-mother/booking-chat" element={<UserChat />} />
+          <Route path="availability" element={<Availability />} />
 
           <Route path="screenings" element={<Screenings />} />
           <Route path="screenings/single-screening" element={<SingleScreening />} />

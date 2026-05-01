@@ -99,57 +99,62 @@ export default function useApiReqs() {
 
 
     //servicees
-    const addService = async ({ callBack = () => { }, serviceInfo, serviceTypes = [] }) => {
+    const addService = async ({ callBack = () => { }, serviceInfo, serviceTypes = [], locations = [] }) => {
         try {
-
-            if (serviceTypes?.length === 0) throw new Error()
+            if (serviceTypes?.length === 0) throw new Error("At least one pricing tier is required")
 
             dispatch(appLoadStart())
 
-            const { data: newService, error: newServiceError } = await supabase
+            // Separate existing locations from newly created ones
+            const existingLocIds = locations.filter(loc => loc.id && typeof loc.id === 'string' && loc.id.length > 10).map(loc => loc.id);
+            const newLocs = locations.filter(loc => !loc.id || typeof loc.id === 'number'); // New locations have temp numeric IDs
+
+            const { data: serviceId, error: setupError } = await supabase.rpc("setup_full_service", {
+                p_service_id: serviceInfo.id || null,
+                p_service_data: serviceInfo,
+                p_service_types: serviceTypes.map(({ scheduling_mode, ...rest }) => rest), // Strip UI helper fields
+                p_existing_location_ids: existingLocIds,
+                p_new_locations: newLocs.map(({ id, ...rest }) => rest)
+            })
+
+            if (setupError) {
+                console.error("setup_full_service error:", setupError)
+                throw setupError
+            }
+
+            // Fetch the fully created service to update local state
+            const { data: fullService } = await supabase
                 .from("services")
-                .insert({
-                    ...serviceInfo,
-                    provider_id: user?.id
-                })
-                .select()
+                .select(`
+                    *,
+                    service_types(*),
+                    service_location_links(
+                        location_id,
+                        provider_locations(*)
+                    )
+                `)
+                .eq("id", serviceId)
                 .single()
 
-            if (newServiceError) {
-                console.log("newServiceError", newServiceError)
-                throw new Error()
+            // Smart update: replace if editing, prepend if new
+            let updatedServices;
+            if (serviceInfo.id) {
+                updatedServices = (services || []).map(s => s.id === serviceInfo.id ? fullService : s);
+            } else {
+                updatedServices = [fullService, ...(services || [])];
             }
-
-            const { data: newServiceTypes, error: newServiceTypesError } = await supabase
-                .from("service_types")
-                .insert(serviceTypes?.map(sType => {
-                    return {
-                        ...sType,
-                        service_id: newService?.id
-                    }
-                }))
-
-            if (newServiceTypesError) {
-                await supabase.from("services").delete().eq("id", newService?.id)
-                console.log("newServiceTypesError", newServiceTypesError)
-                throw new Error()
-            }
-
-            const updatedServices = [newService, ...(services || [])]
 
             dispatch(setUserDetails({ services: updatedServices }))
-
-            dispatch(appLoadStop())
-
-            callBack && callBack({})
-
-            toast.success("Service created")
+            callBack({ service: fullService })
 
         } catch (error) {
-            console.log(error)
-            return apiReqsError({ errorMsg: 'Error adding service' })
+            console.error("Error adding service:", error)
+            toast.error(error.message || "Failed to create service. Please try again.")
+        } finally {
+            dispatch(appLoadStop())
         }
     }
+
     const getServices = async ({ callBack = () => { } }) => {
         try {
 
@@ -159,7 +164,11 @@ export default function useApiReqs() {
                 .from('services')
                 .select(`
                     *,
-                    types: service_types ( * )  
+                    service_types(*),
+                    service_location_links(
+                        location_id,
+                        provider_locations(*)
+                    )
                 `)
                 .eq('provider_id', user?.id)
 
@@ -168,11 +177,11 @@ export default function useApiReqs() {
                 throw new Error()
             }
 
-            dispatch(setUserDetails({ servicees: data }))
+            dispatch(setUserDetails({ services: data }))
 
             dispatch(appLoadStop())
 
-            callBack && callBack({})
+            callBack && callBack({ services: data })
 
         } catch (error) {
             console.log(error)
@@ -498,13 +507,13 @@ export default function useApiReqs() {
                 .select()
                 .single()
 
-            if(error){
+            if (error) {
                 console.log(error)
                 throw new Error()
             }
 
             const updatedBookings = bookings?.map(b => {
-                if(b?.id === booking_id){
+                if (b?.id === booking_id) {
                     return {
                         ...b,
                         summary_note,

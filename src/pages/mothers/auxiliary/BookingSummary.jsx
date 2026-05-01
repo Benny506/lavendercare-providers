@@ -7,9 +7,6 @@ const validationSchema = Yup.object({
     summary_note: Yup.string()
         .trim()
         .required("Summary note is required"),
-    prescription: Yup.string()
-        .trim()
-        .required("Prescription is required"),
 });
 
 export default function BookingSummary({ isOpen, onClose, bookingInfo }) {
@@ -23,14 +20,12 @@ export default function BookingSummary({ isOpen, onClose, bookingInfo }) {
             enableReinitialize
             initialValues={{
                 summary_note: bookingInfo?.summary_note || "",
-                prescription: bookingInfo?.prescription || "",
             }}
             validationSchema={validationSchema}
             onSubmit={(values) => {
                 updateBookingSummary({
-                    callBack: ({ }) => { },
+                    callBack: () => { onClose() },
                     booking_id: bookingInfo?.id,
-                    prescription: values.prescription,
                     summary_note: values.summary_note,
                 })
             }}
@@ -38,10 +33,10 @@ export default function BookingSummary({ isOpen, onClose, bookingInfo }) {
             {({ handleSubmit, errors, touched }) => (
                 <Modal
                     onClose={onClose}
-                    primaryButton={"Save"}
+                    primaryButton={"Save Summary"}
                     primaryButtonFunc={handleSubmit}
-                    title="Summary & Prescription (if any)"
-                    description="Notes, prescriptions, summary about this particular appointment"
+                    title="Clinical Summary"
+                    description="Write a detailed summary of this particular appointment/session."
                 >
                     <Form className="space-y-5">
                         {/* Summary Note */}
@@ -52,37 +47,15 @@ export default function BookingSummary({ isOpen, onClose, bookingInfo }) {
                             <Field
                                 as="textarea"
                                 name="summary_note"
-                                rows={4}
-                                className={`w-full border rounded-md p-3 outline-none ${errors.summary_note && touched.summary_note
+                                rows={8}
+                                className={`w-full border rounded-xl p-4 outline-none transition-all focus:border-primary-500 ${errors.summary_note && touched.summary_note
                                     ? "border-red-500"
-                                    : "border-gray-300"
+                                    : "border-gray-200"
                                     }`}
-                                placeholder="Write detailed summary of the session..."
+                                placeholder="What happened during this session? Any observations or recommendations?"
                             />
                             <ErrorMessage
                                 name="summary_note"
-                                component="div"
-                                className="text-red-500 text-xs mt-1"
-                            />
-                        </div>
-
-                        {/* Prescription */}
-                        <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Prescription
-                            </label>
-                            <Field
-                                as="textarea"
-                                name="prescription"
-                                rows={4}
-                                className={`w-full border rounded-md p-3 outline-none ${errors.prescription && touched.prescription
-                                    ? "border-red-500"
-                                    : "border-gray-300"
-                                    }`}
-                                placeholder="Enter any prescribed medications or instructions..."
-                            />
-                            <ErrorMessage
-                                name="prescription"
                                 component="div"
                                 className="text-red-500 text-xs mt-1"
                             />

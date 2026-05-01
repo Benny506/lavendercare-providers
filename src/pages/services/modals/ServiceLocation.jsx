@@ -2,11 +2,9 @@ import ErrorMsg1 from "@/components/ErrorMsg1";
 import Modal from "@/components/Modal"
 import InputGroup from "@/components/ui/InputGroup";
 import { ErrorMessage, Formik } from "formik";
-import { Globe, X } from "lucide-react";
-import React, { useState } from "react";
+import { Globe, Info } from "lucide-react";
+import React from "react";
 import * as yup from 'yup'
-
-const minDuration = 15 * 60
 
 const ServiceLocation = ({
     isOpen,
@@ -23,48 +21,48 @@ const ServiceLocation = ({
                     enableReinitialize
                     validationSchema={
                         yup.object().shape({
-                            country: yup.string().required("Country is required"),
+                            country: yup.string().required("Which country is this location in?"),
                             state: yup.string().required("State is required"),
-                            city: yup.string().required("City is required"),
-                            address: yup.string().required("Address is required"),
+                            city: yup.string().required("City or LGA is required"),
+                            address: yup.string().required("Please provide the full street address"),
                         })
                     }
                     initialValues={{
-                        country: info?.country || "",
+                        country: info?.country || "Nigeria",
                         state: info?.state || "",
                         city: info?.city || "",
                         address: info?.address || "",
                     }}
                     onSubmit={values => {
-                        const requestInfo = values
-
                         handleContinueBtnClick({
                             requestInfo: values,
                             info
                         })
                     }}
                 >
-                    {({ handleBlur, handleChange, handleSubmit, values, setFieldValue }) => (
+                    {({ handleBlur, handleChange, handleSubmit, values }) => (
                         <Modal
-                            title="Set Pricing & Duration"
-                            // primaryButton="Go back"
-                            secondaryButton={continueBtnText || "Save"}
+                            title="Add Business Location"
+                            secondaryButton={continueBtnText || "Save Location"}
                             onClose={hide}
                             secondaryButtonFunc={handleSubmit}
-                            // primaryButtonFunc={goBackAStep}
                             styles={{
-                                wrapper: "max-w-sm relative",
+                                wrapper: "max-w-md relative",
                                 content: "relative",
-                                title: "text-lg font-bold text-left text-black relative",
-                                closeIconWrapper: "absolute top-6 right-5 z-10",
-                                closeButton: "text-grey-500 hover:text-grey-700 p-1 cursor-pointer",
-                                closeIcon: "w-6 h-6",
+                                title: "text-xl font-bold text-left text-black relative",
                                 footer: "flex gap-6 mt-10 w-full font-bold",
-                                primaryButton: "w-full px-5 py-3  bg-primary-50 text-primary-700 rounded-4xl",
-                                secondaryButton: "w-full px-5 py-3  text-grey-50 bg-primary-500 rounded-4xl",
+                                secondaryButton: "w-full px-5 py-3 text-white bg-primary-600 rounded-full hover:bg-primary-700 transition-all",
                             }}
                         >
-                            <div className="space-y-4">
+                            <div className="space-y-6">
+                                {/* Help Tip */}
+                                <div className="bg-primary-50 p-4 rounded-xl flex gap-3 items-start border border-primary-100">
+                                    <Info className="text-primary-500 shrink-0 mt-0.5" size={18} />
+                                    <p className="text-xs text-primary-800 leading-relaxed">
+                                        This location will be saved to your profile. You can link it to any of your services later.
+                                    </p>
+                                </div>
+
                                 {/* Country */}
                                 <InputGroup label="Country" icon={Globe}>
                                     <input
@@ -72,55 +70,57 @@ const ServiceLocation = ({
                                         onChange={handleChange}
                                         onBlur={handleBlur}
                                         name="country"
-                                        placeholder="Country"
-                                        className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                                        placeholder="e.g. Nigeria"
+                                        className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                                     />
                                     <ErrorMessage name="country">
-                                        {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
+                                        {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
                                     </ErrorMessage>
                                 </InputGroup>
 
-                                {/* State */}
-                                <InputGroup label="State">
-                                    <input
-                                        value={values.state}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        name="state"
-                                        placeholder="State"
-                                        className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                    />
-                                    <ErrorMessage name="state">
-                                        {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
-                                    </ErrorMessage>
-                                </InputGroup>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* State */}
+                                    <InputGroup label="State">
+                                        <input
+                                            value={values.state}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            name="state"
+                                            placeholder="e.g. Lagos"
+                                            className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                                        />
+                                        <ErrorMessage name="state">
+                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
+                                        </ErrorMessage>
+                                    </InputGroup>
 
-                                {/* City */}
-                                <InputGroup label="City / LGA">
-                                    <input
-                                        value={values.city}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        name="city"
-                                        placeholder="City/Local Govt Area"
-                                        className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
-                                    />
-                                    <ErrorMessage name="city">
-                                        {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
-                                    </ErrorMessage>
-                                </InputGroup>
+                                    {/* City */}
+                                    <InputGroup label="City / LGA">
+                                        <input
+                                            value={values.city}
+                                            onChange={handleChange}
+                                            onBlur={handleBlur}
+                                            name="city"
+                                            placeholder="e.g. Ikeja"
+                                            className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition-all"
+                                        />
+                                        <ErrorMessage name="city">
+                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
+                                        </ErrorMessage>
+                                    </InputGroup>
+                                </div>
 
                                 {/* Specific Address */}
-                                <InputGroup label="Specific Address">
-                                    <input
-                                        placeholder="Address"
+                                <InputGroup label="Full Street Address">
+                                    <textarea
+                                        placeholder="e.g. 123 Lavender Lane, Off Medical Road"
                                         name="address"
                                         value={values.address}
                                         onChange={handleChange}
-                                        className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
+                                        className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-primary-500 outline-none transition-all min-h-[100px] resize-none"
                                     />
                                     <ErrorMessage name="address">
-                                        {errorMsg => <ErrorMsg1 className="mb-7" errorMsg={errorMsg} />}
+                                        {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
                                     </ErrorMessage>
                                 </InputGroup>
                             </div>

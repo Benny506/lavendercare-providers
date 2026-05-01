@@ -12,15 +12,14 @@ import supabase from "@/database/dbInit";
 import { sendNotifications } from '@/lib/notifications'
 import { appLoadStart, appLoadStop } from "@/redux/slices/appLoadingSlice";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useCountdown } from "@/hooks/useCountdown";
 import AudioPlayer from "./auxiliary/AudioPlayer";
 import ProfileImg from "@/components/ProfileImg";
 import { getPublicImageUrl, uploadAsset } from "@/lib/requestApi";
 import MediaDisplay from "./auxiliary/MediaDisplay";
 import FailedMsgModal from "./auxiliary/FailedMsgModal";
 import ConfirmModal from "@/components/ConfirmModal";
-import BookingSummary from "./auxiliary/BookingSummary";
 import { useAudioRecorder } from "@/hooks/chatHooks/useAudioRecorder";
+import { dmTopic } from "@/hooks/chatHooks/dm";
 
 
 
@@ -31,52 +30,36 @@ export default function UserChat() {
 
     const { state } = useLocation()
     const user = state?.user
-    const bookingInfo = state?.bookingInfo
 
     const profile = useSelector(state => getUserDetailsState(state).profile)
-    const bookings = useSelector(state => getUserDetailsState(state).bookings)
-
-    const latestBooking = bookings?.filter(b => b?.id === bookingInfo?.id)?.[0]
 
     const topRef = useRef()
     const bottomRef = useRef(null)
-    const isAwaitingCompletion = useRef(false)
     const fileRef = useRef(null)
 
-    const selectedChat = latestBooking
     const meId = profile?.id
     const peerId = user?.id
 
     const [input, setInput] = useState("");
-    const [showPatientInfo, setShowPatientInfo] = useState(false);
-    const [showBookingSummary, setShowBookingSummary] = useState(false);
-    const [showSessionEndedModal, setShowSessionEndedModal] = useState(false);
-    const [summaryNote, setSummaryNote] = useState('')
     const [failedMsgModal, setFailedMsgModal] = useState({ visible: false, hide: null })
     const [confirmDelete, setConfirmDelete] = useState({ visible: false, hide: null })
 
     const [recordingDuration, setRecordingDuration] = useState(0); // seconds
 
     const {
-        status, messages, sendMessage, onlineUsers, insertSubStatus, updateSubStatus,
+        status, messages, sendMessage, onlineUsers,
         canLoadMoreMsgs, loadMessages, bulkMsgsRead, refreshConnection,
         sendTempMedia, updateTempMedia, retrySend, deleteMessage,
         cancelRetrySend
-    } = useDirectChat({ topic: selectedChat?.id, meId, peerId });
-
-    const {
-        remaining, formatted, isInRange, status: countdownStatus
-    } = useCountdown({ startTime: selectedChat?.start_time, durationInSeconds: selectedChat?.duration })
+    } = useDirectChat({ topic: dmTopic(meId, peerId), meId, peerId });
 
     const peerOnline = onlineUsers.includes(peerId)
 
     useEffect(() => {
-        if (!selectedChat?.id) {
-            toast.info("Unable to locate booking chat")
+        if (!peerId) {
+            toast.info("Unable to locate chat")
             navigate(-1)
-
             return;
-
         }
     }, [])
 
@@ -88,14 +71,7 @@ export default function UserChat() {
         }
     }, [messages]);
 
-    useEffect(() => {
-        if (!selectedChat?.id) {
-            toast.error("Appointment not found. Cannot access chat-history")
-            navigate(-1)
-        }
-    }, [])
-
-    if (!selectedChat?.id) {
+    if (!peerId) {
         return <></>
     }
 
@@ -105,9 +81,6 @@ export default function UserChat() {
     const openConfirmDelete = ({ msg }) => setConfirmDelete({ visible: true, hide: hideConfirmDelete, msg })
     const hideConfirmDelete = () => setConfirmDelete({ visible: false, hide: null })
 
-    const {
-        day
-    } = selectedChat
 
     const handleReadUnreadMsgs = () => {
         const unReadMsgsIds = (messages || [])?.filter(msg => (!msg?.read_at && msg?.to_user === meId)).map(msg => msg?.id)
@@ -141,34 +114,6 @@ export default function UserChat() {
         }
     }
 
-    const updateStatusToAwaitingCompletion = async () => {
-        try {
-
-            const { data: statusData, error } = await supabase
-                .from('all_bookings')
-                .select('*')
-                .single()
-                .eq("id", selectedChat?.id)
-
-            if (statusData) {
-                if (statusData?.status === 'awaiting_completion') {
-                    isAwaitingCompletion.current = true
-                    return;
-                }
-            }
-
-            await supabase
-                .from('all_bookings')
-                .update({
-                    status: 'awaiting_completion'
-                })
-                .eq("id", selectedChat?.id)
-
-        } catch (error) {
-            console.log(error)
-            toast.error("Error updating appointment status. Contact support after this session")
-        }
-    }
 
     const sendNow = () => {
         const myMessagesCount = (messages || []).filter(msg => msg.from_user == meId).length
@@ -179,7 +124,7 @@ export default function UserChat() {
         // }
 
         if (!input.trim()) return;
-        sendMessage({ text: input, toUser: peerId, bookingId: selectedChat?.id });
+        sendMessage({ text: input, toUser: peerId });
         setInput('');
     };
 
@@ -187,14 +132,14 @@ export default function UserChat() {
         const { file_type, message, id } = msg
 
         if (file_type === 'text' || (file_type !== 'text' && !typeof message !== 'object')) {
-            sendMessage({ text: message, fileType: file_type, toUser: peerId, bookingId: selectedChat?.id, oldMsgId: id });
+            sendMessage({ text: message, fileType: file_type, toUser: peerId, oldMsgId: id });
 
         } else {
             retrySend({ msgId: msg?.id })
 
             uploadAsset({
                 file: [message],
-                id: selectedChat?.id,
+                id: peerId,
                 bucket_name: 'chat_media',
                 ext: message?.name.split(".").pop()?.toLowerCase() || "",
             })
@@ -208,7 +153,6 @@ export default function UserChat() {
                         text: filePath,
                         fileType: file_type,
                         toUser: peerId,
-                        bookingId: meId,
                         oldMsgId: id,
                     });
                 })
@@ -306,7 +250,7 @@ export default function UserChat() {
 
         uploadAsset({
             file: [file],
-            id: selectedChat?.id,
+            id: peerId,
             bucket_name: 'voice_notes',
             ext: extension
         })
@@ -321,8 +265,7 @@ export default function UserChat() {
                     msgObj: {
                         ...msg,
                         message: uploadedFile
-                    },
-                    bookingId: selectedChat?.id
+                    }
                 })
             })
             .catch(err => {
@@ -334,8 +277,7 @@ export default function UserChat() {
                     msgObj: {
                         ...msg,
                         message: null
-                    },
-                    bookingId: selectedChat?.id
+                    }
                 })
             })
     }
@@ -415,7 +357,7 @@ export default function UserChat() {
 
         uploadAsset({
             file: [file],
-            id: selectedChat?.id,
+            id: peerId,
             bucket_name: 'chat_media',
             ext: file?.name.split(".").pop()?.toLowerCase() || ""
         })
@@ -430,8 +372,7 @@ export default function UserChat() {
                     msgObj: {
                         ...msg,
                         message: uploadedFile
-                    },
-                    bookingId: selectedChat?.id
+                    }
                 })
             })
             .catch(err => {
@@ -442,8 +383,7 @@ export default function UserChat() {
                     msgObj: {
                         ...msg,
                         message: uploadedFile
-                    },
-                    bookingId: selectedChat?.id
+                    }
                 })
             })
     };
@@ -462,7 +402,7 @@ export default function UserChat() {
                 {/* Middle Panel - Chat Area */}
                 <div className="flex-1 bg-white flex flex-col">
                     {
-                        selectedChat
+                        peerId
                             ?
                             <>
                                 {/* Chat Header */}
@@ -474,25 +414,12 @@ export default function UserChat() {
                                         />
                                         <div>
                                             <h2 className="font-semibold text-gray-900">{user?.name}</h2>
-                                            <p className="font-semibold text-xs text-primary-600 text-gray-900">
+                                            <p className="font-semibold text-[10px] text-primary-600 uppercase tracking-wider">
                                                 {peerOnline ? 'online' : onlineUsers.length > 0 ? 'offline' : ''}
-                                                <br />
-                                                {countdownStatus}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <p className="text-center txt-13 text-gray-600">
-                                            {formatDate1({ dateISO: new Date(day).toISOString() })}
-                                        </p>
-                                        {/*<p className="text-center txt-15 text-gray-600">
-                                        { timeToAMPM_FromHour({ hour }) } - { timeToAMPM_FromHour_Duration({ startHour: hour, durationInSeconds: duration }) }
-                                    </p> */}
-                                        <p className="text-center txt-16 text-gray-600">
-                                            {formatted}
-                                        </p>
-                                    </div>
 
                                     <div className="flex items-center justify-end gap-3">
                                         <button
@@ -505,9 +432,9 @@ export default function UserChat() {
                                             variant="default"
                                             size="sm"
                                             className="text-white bg-primary-600"
-                                            onClick={() => setShowBookingSummary(true)}
+                                            onClick={() => navigate("/bookings")}
                                         >
-                                            Notes
+                                            Booking History
                                         </Button>
 
                                         <Button
@@ -565,7 +492,7 @@ export default function UserChat() {
                                                                         (
                                                                             <div style={{ minWidth: '240px', minHeight: '20px' }}>
                                                                                 <AudioPlayer
-                                                                                    channelId={selectedChat?.id}
+                                                                                    channelId={peerId}
                                                                                     filePath={message}
                                                                                     durationMillis={duration * 1000}
                                                                                     iAmSender={iAmSender}
@@ -678,93 +605,89 @@ export default function UserChat() {
 
                                 {/* Message Input */}
                                 {
-                                    (isInRange)
+                                    (status == 'subscribed')
                                         ?
-                                        (status == 'subscribed' && insertSubStatus == 'subscribed' && updateSubStatus == 'subscribed')
-                                            ?
-                                            <div className="p-4 border-t border-gray-200 bg-white">
-                                                <div className="flex items-center gap-3">
-                                                    <input
-                                                        ref={fileRef}
-                                                        type="file"
-                                                        accept="image/*,video/*"
-                                                        style={{ display: "none" }}
-                                                        onChange={(e) => {
-                                                            handleFileChange(e)
-                                                            e.target.value = null
-                                                        }}
-                                                    />
+                                        <div className="p-4 border-t border-gray-200 bg-white">
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    ref={fileRef}
+                                                    type="file"
+                                                    accept="image/*,video/*"
+                                                    style={{ display: "none" }}
+                                                    onChange={(e) => {
+                                                        handleFileChange(e)
+                                                        e.target.value = null
+                                                    }}
+                                                />
 
-                                                    {
-                                                        recordingStatus === 'recording'
-                                                            ?
-                                                            <div className="flex items-center gap-3 w-full">
-                                                                <div className="flex-1 flex items-center justify-between bg-gray-100 rounded-md px-4 py-2 text-red-500 animate-pulse">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Mic className="w-4 h-4" />
-                                                                        <span className="text-sm font-medium">Recording...</span>
-                                                                    </div>
-                                                                    <span className="text-sm font-mono">{formatDuration(recordingDuration)}</span>
+                                                {
+                                                    recordingStatus === 'recording'
+                                                        ?
+                                                        <div className="flex items-center gap-3 w-full">
+                                                            <div className="flex-1 flex items-center justify-between bg-gray-100 rounded-md px-4 py-2 text-red-500 animate-pulse">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Mic className="w-4 h-4" />
+                                                                    <span className="text-sm font-medium">Recording...</span>
                                                                 </div>
-                                                                <Button variant="ghost" onClick={() => { isRecordingCancelled.current = true; stopRecording(); }}>
-                                                                    <Trash className="w-5 h-5 text-gray-500 hover:text-red-500" />
-                                                                </Button>
-                                                                <Button onClick={stopRecording} size="sm" className="h-10 w-10 p-0 rounded-full bg-purple-600 hover:bg-purple-700 text-white">
-                                                                    <Send className="w-4 h-4" />
-                                                                </Button>
+                                                                <span className="text-sm font-mono">{formatDuration(recordingDuration)}</span>
                                                             </div>
-                                                            :
-                                                            <>
-                                                                <div className="flex-1 relative">
-                                                                    <textarea
-                                                                        value={input}
-                                                                        onChange={(e) => setInput(e.target.value)}
-                                                                        placeholder="Type a message..."
-                                                                        className="w-full px-3 py-1 rounded-md bg-gray-50 border-gray-200 whitespace-pre-wrap"
-                                                                    />
-                                                                </div>
-                                                                <Button
-                                                                    onClick={() => fileRef?.current?.click?.()}
-                                                                    size="sm"
-                                                                    variant="ghost"
-                                                                    className="h-10 w-10 p-0 rounded-full hover:bg-gray-100"
-                                                                >
-                                                                    <Paperclip className="w-4 h-4 text-gray-500" />
-                                                                </Button>
-                                                                {
-                                                                    input.trim().length > 0
-                                                                        ?
-                                                                        <Button
-                                                                            onClick={sendNow}
-                                                                            size="sm"
-                                                                            className="h-10 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-full"
-                                                                        >
-                                                                            Send
-                                                                        </Button>
-                                                                        :
-                                                                        <Button
-                                                                            onClick={startRecording}
-                                                                            size="sm"
-                                                                            className="h-10 w-10 p-0 rounded-full bg-purple-600 hover:bg-purple-700 text-white"
-                                                                        >
-                                                                            <Mic className="w-4 h-4" />
-                                                                        </Button>
-                                                                }
-                                                            </>
-                                                    }
-                                                </div>
+                                                            <Button variant="ghost" onClick={() => { isRecordingCancelled.current = true; stopRecording(); }}>
+                                                                <Trash className="w-5 h-5 text-gray-500 hover:text-red-500" />
+                                                            </Button>
+                                                            <Button onClick={stopRecording} size="sm" className="h-10 w-10 p-0 rounded-full bg-purple-600 hover:bg-purple-700 text-white">
+                                                                <Send className="w-4 h-4" />
+                                                            </Button>
+                                                        </div>
+                                                        :
+                                                        <>
+                                                            <div className="flex-1 relative">
+                                                                <textarea
+                                                                    value={input}
+                                                                    onChange={(e) => setInput(e.target.value)}
+                                                                    placeholder="Type a message..."
+                                                                    className="w-full px-3 py-1 rounded-md bg-gray-50 border-gray-200 whitespace-pre-wrap"
+                                                                />
+                                                            </div>
+                                                            <Button
+                                                                onClick={() => fileRef?.current?.click?.()}
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-10 w-10 p-0 rounded-full hover:bg-gray-100"
+                                                            >
+                                                                <Paperclip className="w-4 h-4 text-gray-500" />
+                                                            </Button>
+                                                            {
+                                                                input.trim().length > 0
+                                                                    ?
+                                                                    <Button
+                                                                        onClick={sendNow}
+                                                                        size="sm"
+                                                                        className="h-10 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-full"
+                                                                    >
+                                                                        Send
+                                                                    </Button>
+                                                                    :
+                                                                    <Button
+                                                                        onClick={startRecording}
+                                                                        size="sm"
+                                                                        className="h-10 w-10 p-0 rounded-full bg-purple-600 hover:bg-purple-700 text-white"
+                                                                    >
+                                                                        <Mic className="w-4 h-4" />
+                                                                    </Button>
+                                                            }
+                                                        </>
+                                                }
                                             </div>
-                                            :
-                                            <div className="flex items-center justify-center">
-                                                <div
-                                                    onClick={refreshConnection}
-                                                    className="text-center font-medium bg-purple-600 text-white m-3 py-3 px-7 cursor-pointer rounded-lg"
-                                                >
-                                                    Want to send a msg?
-                                                </div>
-                                            </div>
+                                        </div>
                                         :
-                                        <div />
+                                        <div className="flex items-center justify-center">
+                                            <div
+                                                onClick={refreshConnection}
+                                                className="text-center font-medium bg-purple-600 text-white m-3 py-3 px-7 cursor-pointer rounded-lg"
+                                            >
+                                                Want to send a msg?
+                                            </div>
+                                        </div>
                                 }
                             </>
                             :
@@ -778,20 +701,6 @@ export default function UserChat() {
 
                 {/* Patient Info Modal */}
 
-                {/* Summary note modal  */}
-                {/* <SummaryNotesModal
-                    closeModal={() => setShowBookingSummary(false)}
-                    visible={showSummaryNotesModal}
-                    booking={selectedChat}
-                /> */}
-
-                {/* Session ended modal  */}
-                {/* <SessionEndedModal 
-                    closeModal={() => setShowSessionEndedModal(false)}
-                    booking_id={selectedChat?.id}
-                    visible={showSessionEndedModal}
-                    summaryNote={summaryNote}
-                /> */}
             </div>
 
             <FailedMsgModal
@@ -814,11 +723,6 @@ export default function UserChat() {
                 }}
             />
 
-            <BookingSummary
-                isOpen={showBookingSummary}
-                onClose={() => setShowBookingSummary(false)}
-                bookingInfo={bookingInfo}
-            />
         </div>
     );
 }       

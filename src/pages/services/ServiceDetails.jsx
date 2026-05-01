@@ -9,7 +9,6 @@ import { toast } from "react-toastify";
 import { getServiceStatusColor, getServiceStatusFeedBack } from "@/lib/utilsJsx";
 import { formatNumberWithCommas, secondsToLabel } from "@/lib/utils";
 
-import SetServiceHours from "./modals/SetServiceHours";
 import HideService from "./HideService";
 import ServiceType from "./modals/ServiceType";
 import AddServiceModal from "./modals/AddServiceModal";
@@ -62,26 +61,15 @@ export default function ServiceDetails() {
     service_name,
     status,
     service_category,
+    scheduling_mode,
     service_details,
     location,
     country,
     city,
-    availability,
     types,
   } = service;
 
   /* ------------------ Handlers ------------------ */
-
-  const updateAvailability = (availability) => {
-    editService({
-      service,
-      update: { availability },
-      callBack: ({ updatedService }) => {
-        setService(updatedService);
-        setEditModals({ type: null });
-      },
-    });
-  };
 
   const updateServiceDetails = (payload) => {
     editService({
@@ -101,7 +89,6 @@ export default function ServiceDetails() {
 
       {/* PAGE HEADER */}
       <div className="w-full flex flex-col gap-6 mb-8">
-
         {/* Row 1 — Utility */}
         <div className="flex items-center justify-between">
           <button
@@ -115,10 +102,8 @@ export default function ServiceDetails() {
           <Button
             onClick={() => setEditModals({ type: "hide_service" })}
             className={`rounded-full px-5 py-2 text-sm font-semibold transition
-        ${status === "hidden"
-                ? "bg-green-600 hover:bg-green-700"
-                : "bg-red-600 hover:bg-red-700"
-              }`}
+              ${status === "hidden" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+            `}
           >
             {status === "hidden" ? "Show Service" : "Hide Service"}
           </Button>
@@ -135,17 +120,19 @@ export default function ServiceDetails() {
               {service_category?.replaceAll("_", " ")}
             </Badge>
 
-            <span
-              className={`text-xs font-semibold px-2.5 py-1 rounded-md capitalize
-          ${status === "approved"
-                  ? "bg-green-100 text-green-700"
-                  : status === "hidden"
-                    ? "bg-red-100 text-red-700"
-                    : "bg-yellow-100 text-yellow-700"
-                }`}
+            <Badge
+              className={`text-xs font-semibold px-2.5 py-1 rounded-md capitalize border-none
+                ${status === "approved" ? "bg-green-100 text-green-700" : 
+                  status === "hidden" ? "bg-red-100 text-red-700" : 
+                  "bg-yellow-100 text-yellow-700"}
+              `}
             >
               {status}
-            </span>
+            </Badge>
+
+            <Badge className="capitalize rounded-md px-3 py-1 bg-primary-50 text-primary-700 border-primary-100">
+              Mode: {scheduling_mode || "Instant"}
+            </Badge>
           </div>
         </div>
 
@@ -155,9 +142,7 @@ export default function ServiceDetails() {
             {getServiceStatusFeedBack({ status })}
           </p>
         </div>
-
       </div>
-
 
       {/* SESSION TYPES */}
       <section className="bg-white rounded-2xl border p-6 space-y-4">
@@ -182,10 +167,18 @@ export default function ServiceDetails() {
               >
                 <div className="flex justify-between items-start mb-3">
                   <div className="text-sm space-y-1 text-gray-700">
-                    <p>Duration: {secondsToLabel({ seconds: t.duration })}</p>
+                    {(!scheduling_mode || scheduling_mode === 'instant') ? (
+                      <p>Duration: {secondsToLabel({ seconds: t.duration })}</p>
+                    ) : (
+                      <>
+                        <p>Min Turnaround: {secondsToLabel({ seconds: t.duration })}</p>
+                        {t.max_duration > 0 && (
+                          <p>Max Duration: {secondsToLabel({ seconds: t.max_duration })}</p>
+                        )}
+                      </>
+                    )}
                     <p>
-                      Price: {t.currency}{" "}
-                      {formatNumberWithCommas(t.price)}
+                      Price: {t.currency} {formatNumberWithCommas(t.price)}
                     </p>
                   </div>
                   <Badge variant="outline">
@@ -196,9 +189,7 @@ export default function ServiceDetails() {
                 <div className="flex justify-between mt-4">
                   <Button
                     variant="ghost"
-                    onClick={() =>
-                      setEditModals({ type: "serviceType", info: t })
-                    }
+                    onClick={() => setEditModals({ type: "serviceType", info: t })}
                     className="text-primary-600"
                   >
                     Edit
@@ -211,8 +202,7 @@ export default function ServiceDetails() {
                       deleteServiceType({
                         service,
                         requestInfo: { type_id: t.id },
-                        callBack: ({ updatedService }) =>
-                          setService(updatedService),
+                        callBack: ({ updatedService }) => setService(updatedService),
                       })
                     }
                   >
@@ -223,10 +213,7 @@ export default function ServiceDetails() {
             ))}
           </div>
         ) : (
-          <ZeroItems
-            zeroText1="No session types"
-            zeroText2="Add one to get started"
-          />
+          <ZeroItems zeroText1="No session types" zeroText2="Add one to get started" />
         )}
       </section>
 
@@ -331,12 +318,6 @@ export default function ServiceDetails() {
         </div>
       </Card>
 
-      {/* SERVICE HOURS (UNCHANGED) */}
-      <SetServiceHours
-        info={{ ...availability }}
-        handleContinueBtnClick={updateAvailability}
-      />
-
       {/* MODALS */}
       <HideService
         service={service}
@@ -347,6 +328,7 @@ export default function ServiceDetails() {
 
       <ServiceType
         info={editModals.info}
+        scheduling_mode={scheduling_mode}
         isOpen={editModals.type === "serviceType"}
         hide={() => setEditModals({ type: null })}
         continueBtnText="Save"

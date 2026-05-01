@@ -12,8 +12,10 @@ import { appLoadStart, appLoadStop } from '@/redux/slices/appLoadingSlice';
 import { toast } from 'react-toastify';
 import { getPublicImageUrl } from '@/lib/requestApi';
 import { copyToClipboard, formatNumberWithCommas } from '@/lib/utils';
+import { useChat } from '@/contexts/ChatContext';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
+  const { unreadCount } = useChat();
   const dispatch = useDispatch()
 
   const Navigate = useNavigate();
@@ -49,35 +51,43 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       ?
       'services'
       :
-      pathname.includes('bookings')
+      pathname.includes('inbox')
         ?
-        'bookings'
+        'messages'
         :
-        pathname.includes('inbox')
+        pathname.includes('availability')
           ?
-          'inbox'
+          'availability'
           :
-          pathname.includes('wallet')
+          pathname.includes('bookings')
             ?
-            'wallet'
+            'bookings'
             :
-            pathname.includes("settings")
+            pathname.includes('inbox')
               ?
-              'settings'
+              'inbox'
               :
-              pathname.includes("support")
+              pathname.includes('wallet')
                 ?
-                'support'
+                'wallet'
                 :
-                pathname.includes("mothers")
+                pathname.includes("settings")
                   ?
-                  'mothers'
+                  'settings'
                   :
-                  pathname.includes("screenings")
+                  pathname.includes("support")
                     ?
-                    'screenings'
+                    'support'
                     :
-                    'dashboard'
+                    pathname.includes("mothers")
+                      ?
+                      'mothers'
+                      :
+                      pathname.includes("screenings")
+                        ?
+                        'screenings'
+                        :
+                        'dashboard'
 
   const imageUrl = getPublicImageUrl({ path: profile?.profile_img, bucket_name: 'user_profiles' })
 
@@ -85,9 +95,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     assignedMothers?.length > 0
       ?
       licenseApproved
-      ?
+        ?
         SidebarItems
-      :
+        :
         SidebarItems?.filter(item => item?.path !== '/screenings')
       :
       SidebarItems?.filter(item => item.path !== '/mothers' && item?.path !== '/screenings')
@@ -109,8 +119,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
 
             const handleItemClick = () => {
               setIsOpen(false)
-              
-              if(item?.path?.startsWith("https")){
+
+              if (item?.path?.startsWith("https")) {
                 window.open(item.path, "_blank")
                 return
               }
@@ -118,11 +128,14 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               item.path && Navigate(item.path)
             }
 
+            const isAvailabilityNav = item.label.toLowerCase() === 'availability';
+            const hasNoAvailability = isAvailabilityNav && (!profile?.availability || Object.values(profile?.availability).every(day => !day.opening && !day.closing));
+
             return (
               <div
                 key={item.label}
                 onClick={handleItemClick}
-                className={`flex items-center gap-4 py-3 px-4 rounded-lg cursor-pointer transition-colors ${active ? 'bg-[#7B3FE4] text-white' : 'text-[#2D1A4A] hover:bg-[#F3F0FA]'
+                className={`flex items-center gap-4 py-3 px-4 rounded-lg cursor-pointer transition-colors relative ${active ? 'bg-[#7B3FE4] text-white' : 'text-[#2D1A4A] hover:bg-[#F3F0FA]'
                   }`}
               >
                 <span className="w-6 h-6 flex items-center justify-center">
@@ -133,7 +146,17 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                     style={{ color: active ? "#FFFFFF" : "#000000" }}
                   />
                 </span>
-                <span className="font-medium text-md">{item.label}</span>
+                <span className="font-medium text-md flex-1">{item.label}</span>
+
+                {hasNoAvailability && (
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+                )}
+
+                {(item.label.toLowerCase() === 'inbox' || item.label.toLowerCase() === 'messages') && unreadCount > 0 && (
+                  <div className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] h-5 flex items-center justify-center shadow-sm">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </div>
+                )}
               </div>
             )
           }

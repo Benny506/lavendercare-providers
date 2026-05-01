@@ -32,7 +32,7 @@ export default function Chat({
     const topic = selectedChat?.id
 
     const {
-        sendMessage, messages, status, insertSubStatus, updateSubStatus, onlineUsers, bulkMsgsRead,
+        sendMessage, messages, status, onlineUsers, bulkMsgsRead,
         loadMessages, canLoadMoreMsgs, refreshConnection
     } = useDirectChat({
         topic,
@@ -321,7 +321,7 @@ export default function Chat({
             {/* Input bar */}
             {
                 (
-                    (status == 'subscribed' && insertSubStatus == 'subscribed' && updateSubStatus == 'subscribed')
+                    (status == 'subscribed')
                 )
                 ?
                     <div className="flex items-center gap-2 p-3 border-t border-grey-200">

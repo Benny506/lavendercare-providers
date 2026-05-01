@@ -143,68 +143,111 @@ export default function Services() {
                             types
                         } = service;
 
+                        const isPending = status === 'pending';
+                        const isHidden = status === 'hidden';
+
                         return (
                             <motion.div
                                 key={id}
                                 variants={cardAnim}
-                                whileHover={{ y: -6 }}
-                                className="relative bg-white rounded-3xl border shadow-sm hover:shadow-md transition overflow-hidden"
+                                whileHover={!isPending ? { y: -6 } : {}}
+                                className={`relative bg-white rounded-3xl border shadow-sm transition overflow-hidden ${isHidden ? 'opacity-70 grayscale-[0.5]' : ''} ${isPending ? 'bg-gray-50/50 border-dashed' : 'hover:shadow-md'}`}
                             >
-                                {/* Gradient Accent */}
-                                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#7B3FE4] to-[#9F6AFF]" />
+                                {/* Mode-based Gradient Accent */}
+                                <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${
+                                    isPending ? 'from-gray-200 to-gray-300' :
+                                    service.scheduling_mode === 'instant' ? 'from-green-400 to-emerald-500' :
+                                    service.scheduling_mode === 'logistics' ? 'from-blue-400 to-indigo-500' :
+                                    service.scheduling_mode === 'program' ? 'from-purple-400 to-pink-500' :
+                                    'from-amber-400 to-orange-500'
+                                }`} />
 
-                                <div className="p-5 space-y-4">
+                                <div className="p-6 space-y-5">
                                     {/* Header */}
                                     <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-bold text-lg text-gray-900">
-                                                {service_name}
-                                            </h3>
-                                            <Badge className="mt-2 bg-[#F3ECFF] text-[#7B3FE4] border-none">
-                                                {service_category?.replaceAll("_", " ")}
-                                            </Badge>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className={`font-bold text-lg leading-tight ${isPending ? 'text-gray-400' : 'text-gray-900'}`}>
+                                                    {service_name}
+                                                </h3>
+                                                {isHidden && (
+                                                    <Badge variant="outline" className="text-xs text-gray-400 border-gray-200 uppercase tracking-tighter">Hidden</Badge>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Badge className="bg-[#F3ECFF] text-[#7B3FE4] border-none text-[10px] uppercase tracking-wider font-bold">
+                                                    {service_category?.replaceAll("_", " ")}
+                                                </Badge>
+                                                <Badge className={`border-none text-[10px] uppercase tracking-wider font-bold ${
+                                                    isPending ? 'bg-gray-100 text-gray-500' :
+                                                    service.scheduling_mode === 'instant' ? 'bg-green-100 text-green-700' :
+                                                    service.scheduling_mode === 'logistics' ? 'bg-blue-100 text-blue-700' :
+                                                    service.scheduling_mode === 'program' ? 'bg-purple-100 text-purple-700' :
+                                                    'bg-amber-100 text-amber-700'
+                                                }`}>
+                                                    {service.scheduling_mode}
+                                                </Badge>
+                                            </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-2">
+                                        <div className="flex flex-col items-end gap-2 shrink-0">
                                             {getServiceStatusBadge({ status })}
-
                                             <ServiceBadge service_type={service?.service_type} />
                                         </div>
                                     </div>
 
-                                    {/* Location */}
-                                    <div>
-                                        <p className="text-xs font-medium text-gray-500 mb-1">
-                                            Location
-                                        </p>
-                                        <span className="text-sm text-gray-700">
-                                            {
-                                                service?.locations?.length > 0
-                                                    ?
-                                                    `${service?.locations?.length} set`
-                                                    :
-                                                    'Virtual'
-                                            }
-                                        </span>
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-2 gap-4 py-2">
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1">
+                                                Locations
+                                            </p>
+                                            <div className="flex items-center gap-1.5 text-gray-700">
+                                                <Icon icon="mdi:map-marker-radius-outline" className="text-gray-400" />
+                                                <span className="text-sm font-semibold">
+                                                    {service?.service_location_links?.length > 0
+                                                        ? `${service?.service_location_links?.length} linked`
+                                                        : service.scheduling_mode === 'instant' ? 'Virtual' : 'None set'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1">
+                                                Pricing Tiers
+                                            </p>
+                                            <div className="flex items-center gap-1.5 text-gray-700">
+                                                <Icon icon="mdi:tag-outline" className="text-gray-400" />
+                                                <span className="text-sm font-semibold">
+                                                    {service?.service_types?.length || 0} options
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
 
                                     {/* Footer */}
-                                    <div className="flex items-center justify-between pt-4 border-t">
-                                        <p className="text-xs text-gray-500 max-w-[70%]">
-                                            {servicesMap?.[status]?.feedBack}
+                                    <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                                        <p className="text-xs text-gray-400 italic font-medium">
+                                            Capacity: {service.concurrent_capacity || 1} { (service.concurrent_capacity || 1) > 1 ? 'Teams' : 'Slot' }
                                         </p>
 
-                                        <button
-                                            onClick={() =>
-                                                navigate("/services/service", {
-                                                    state: { service_id: id }
-                                                })
-                                            }
-                                            className="flex items-center gap-2 text-primary-600 font-bold hover:gap-3 transition-all"
-                                        >
-                                            View
-                                            <Icon icon="mdi:arrow-right" className="text-lg" />
-                                        </button>
+                                        {isPending ? (
+                                            <div className="flex items-center gap-1 text-gray-400 text-xs font-bold bg-gray-100 px-3 py-1.5 rounded-full">
+                                                <Icon icon="mdi:lock-outline" />
+                                                Under Review
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() =>
+                                                    navigate("/service/setup", {
+                                                        state: { service_id: id }
+                                                    })
+                                                }
+                                                className="group flex items-center gap-2 text-primary-600 font-bold hover:text-primary-700 transition-all text-sm"
+                                            >
+                                                Manage Service
+                                                <Icon icon="mdi:chevron-right" className="text-xl group-hover:translate-x-1 transition-transform" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             </motion.div>

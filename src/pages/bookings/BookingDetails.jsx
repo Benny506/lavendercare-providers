@@ -5,6 +5,7 @@ import { useSelector } from "react-redux"
 import { Icon } from "@iconify/react"
 import { Dot } from "lucide-react"
 import { toast } from "react-toastify"
+import BookingSummary from "../mothers/auxiliary/BookingSummary"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -42,6 +43,7 @@ const BookingDetails = () => {
     const [booking, setBooking] = useState(null)
     const [service, setService] = useState(null)
     const [timerStr, setTimerStr] = useState("")
+    const [showSummary, setShowSummary] = useState(false)
 
     /* ------------------ Fetch Booking ------------------ */
 
@@ -143,15 +145,46 @@ const BookingDetails = () => {
                     </div>
 
                     <div className="flex items-center justify-end gap-2">
-                        {/* {status === "new" && (
-                            <Button variant="destructive" size="sm">
-                                Cancel
-                            </Button>
-                        )} */}
                         <Button onClick={() => navigate('/mothers/single-mother/booking-chat', { state: { bookingInfo: booking, user: booking.user_profile } })} size="sm">
                             Chat
                         </Button>
                     </div>
+                </div>
+            </motion.div>
+
+            {/* ---------- Session Summary ---------- */}
+            <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                animate="visible"
+                className="rounded-2xl bg-white p-6 shadow-sm border border-gray-100"
+            >
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <Icon icon="ph:notebook-bold" className="text-xl text-primary-600" />
+                        <h3 className="text-lg font-bold">Session Summary</h3>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowSummary(true)}
+                        className="text-primary-600 hover:text-primary-700 hover:bg-primary-50"
+                    >
+                        {booking.summary_note ? 'Edit Summary' : 'Add Summary'}
+                    </Button>
+                </div>
+
+                <div className="bg-gray-50 rounded-xl p-4 border border-dashed border-gray-200">
+                    {booking.summary_note ? (
+                        <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                            {booking.summary_note}
+                        </p>
+                    ) : (
+                        <div className="flex flex-col items-center py-4 text-gray-400">
+                            <Icon icon="ph:note-blank" className="text-3xl mb-2 opacity-20" />
+                            <p className="text-sm">No clinical summary has been added for this session yet.</p>
+                        </div>
+                    )}
                 </div>
             </motion.div>
 
@@ -242,6 +275,11 @@ const BookingDetails = () => {
                     </div>
                 </motion.div>
             </div>
+            <BookingSummary
+                isOpen={showSummary}
+                onClose={() => setShowSummary(false)}
+                bookingInfo={booking}
+            />
         </div>
     )
 }
