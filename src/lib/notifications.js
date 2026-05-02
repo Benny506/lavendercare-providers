@@ -7,20 +7,20 @@ export const sendNotifications = async ({ tokens, title, body, data }) => {
             url: 'https://tzsbbbxpdlupybfrgdbs.supabase.co/functions/v1/send-notification',
             method: 'POST',
             data: {
-                tokens, 
-                title, 
-                body, 
+                tokens,
+                title,
+                body,
                 data
             }
         })
 
-        if(errorMsg){
-            console.log(errorMsg)
+        if (errorMsg) {
+            console.log("Sending notification error:", errorMsg)
         }
 
         console.log("Notification result", result)
         return;
-        
+
     } catch (error) {
         console.log(error)
         return;

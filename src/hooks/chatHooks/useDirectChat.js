@@ -4,7 +4,54 @@ import { useDispatch, useSelector } from 'react-redux';
 import { v4 as uuidv4 } from 'uuid';
 import { appLoadStart, appLoadStop } from '../../redux/slices/appLoadingSlice';
 import { getMessages, setChannelIds } from '../../redux/slices/messagesSlice';
+import { subtleLoadStart, subtleLoadStop } from '../../redux/slices/subtleLoaderSlice';
 import { toast } from 'react-toastify';
+import { sendNotifications } from '@/lib/notifications';
+import { getUserDetailsState } from '@/redux/slices/userDetailsSlice';
+
+const notifyMother = async ({ msg, mother, provider }) => {
+  try {
+
+    let token = mother?.notification_token
+    const mother_id = mother?.id
+
+    if (!token && mother_id) {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('notification_token')
+        .eq('id', mother_id)
+        .single()
+
+      if (error) {
+        console.log(error)
+        return
+      }
+
+      if (data) {
+        token = data?.notification_token
+      }
+    }
+
+    if (!token) {
+      return;
+    }
+
+    return await sendNotifications({
+      tokens: [token],
+      // sound: null,
+      title: `${provider?.username || "Provider"}`,
+      body: msg,
+      data: {
+        notification_type: "care-coordinator-chat"
+      }
+    });
+
+
+  } catch (error) {
+    console.log(error)
+    // toast.error("Error notifying mother. Messages have been sent though, she can view them on her lavendercare app")
+  }
+}
 
 // utility to check if messages are the same by ID + read/delivered/read_at
 function areMessagesEqual(a, b) {
@@ -36,6 +83,7 @@ export function useDirectChat({ topic, meId, peerId }) {
   const msgsRef = useRef(null)
 
   const savedMsgs = useSelector(state => getMessages(state).channelIds[topic])
+  const profile = useSelector(state => getUserDetailsState(state).profile)
 
   const [status, setStatus] = useState('connecting');
   const [messages, setMessages] = useState([]);
@@ -116,6 +164,12 @@ export function useDirectChat({ topic, meId, peerId }) {
             event: 'sendMsg',
             payload: user_profile ? { ...realMessage, user_profile } : realMessage
           })
+
+          notifyMother({
+            msg: 'Sent a media file',
+            mother: user_profile,
+            provider: profile
+          })
         }
       }
     } catch (error) {
@@ -174,7 +228,7 @@ export function useDirectChat({ topic, meId, peerId }) {
       }
       return msg
     }))
-  }, [meId, topic])  
+  }, [meId, topic])
 
   const sendMessage = useCallback(
     async ({ text, toUser, user_profile, fileType, duration, oldMsgId }) => {
@@ -196,7 +250,7 @@ export function useDirectChat({ topic, meId, peerId }) {
           duration: duration || null
         };
 
-        const realMessage = { ...optimisticMessage }
+        const realMessage = { ...optimisticMessage, chat_type: 'direct' }
         delete realMessage.pending
         delete realMessage.failed
 
@@ -227,6 +281,13 @@ export function useDirectChat({ topic, meId, peerId }) {
             event: 'sendMsg',
             payload: user_profile ? { ...realMessage, user_profile } : realMessage
           })
+
+          notifyMother({
+            msg: text,
+            mother: user_profile,
+            provider: profile
+          })
+
           if (oldMsgId) deleteMessage({ msgId: oldMsgId })
         }
       } catch (error) {
@@ -307,42 +368,46 @@ export function useDirectChat({ topic, meId, peerId }) {
     return data;
   }
 
-  const onMsgReceived = (msg) => {
+  const onMsgReceived = useCallback((msg) => {
     if (msg?.to_user === meId) {
       const msgId = msg?.id
-      const msgDelivered = messages.find(m => (m?.id == msgId) && m?.delivered_at)
+      // Use ref to avoid stale state in subscription callbacks
+      const msgDelivered = msgsRef.current?.find(m => (m?.id == msgId) && m?.delivered_at)
       if (!msgDelivered) {
-        messageDelivered(msg?.id, msg?.read_at)
+        messageDelivered(msgId, msg?.read_at)
       }
     }
-  }
+  }, [meId])
 
-  const onMsgRead = (msg) => {
+  const onMsgRead = useCallback((msg) => {
     if (msg?.to_user === meId) {
       const msgId = msg?.id
-      const msgRead = messages.find(m => (m?.id == msgId) && m?.read_at)
+      // Use ref to avoid stale state in subscription callbacks
+      const msgRead = msgsRef.current?.find(m => (m?.id == msgId) && m?.read_at)
       if (!msgRead) {
-        messageRead(msg?.id)
+        messageRead(msgId)
       }
     }
-  }
+  }, [meId])
 
-  const onMsgsLoaded = (by_id, timestamp) => {
-    if (by_id == meId && msgsRef.current?.length > 0) return;
+  const onMsgsLoaded = useCallback((by_id, timestamp) => {
+    if (by_id == meId) return;
 
-    const updatedMsgs = [...msgsRef.current].reverse();
-    for (let i = 0; i < updatedMsgs.length; i++) {
-      const msg = updatedMsgs[i];
-      if (msg.to_user === by_id && (!msg.delivered_at || !msg.read_at)) {
-        updatedMsgs[i] = {
-          ...msg,
-          delivered_at: msg.delivered_at || timestamp,
-          read_at: msg.read_at || timestamp
-        };
+    setMessages(prev => {
+      const updatedMsgs = [...prev].reverse();
+      for (let i = 0; i < updatedMsgs.length; i++) {
+        const msg = updatedMsgs[i];
+        if (msg.to_user === by_id && (!msg.delivered_at || !msg.read_at)) {
+          updatedMsgs[i] = {
+            ...msg,
+            delivered_at: msg.delivered_at || timestamp,
+            read_at: msg.read_at || timestamp
+          };
+        }
       }
-    }
-    setMessages(dedupeMessages(updatedMsgs))
-  }
+      return dedupeMessages([...updatedMsgs].reverse());
+    });
+  }, [meId])
 
   const dedupeMessages = (msgs) => {
     const seen = new Set();
@@ -360,13 +425,13 @@ export function useDirectChat({ topic, meId, peerId }) {
       updated[idx] = { ...newMsg, pending: false, failed: false };
       return updated;
     }
-    const replacedMsgs = [...msgs, { ...newMsg, pending: false, failed: false }];
-    return dedupeMessages(replacedMsgs)
+    return dedupeMessages([...msgs, { ...newMsg, pending: false, failed: false }]);
   }
 
-  const loadMessages = useCallback(async ({ msgLoadedTimeStamp, last_loaded_at, isOlder }) => {
-    if (savedMsgs && savedMsgs?.length > 0 && !last_loaded_at) {
-        return afterMsgsLoaded(savedMsgs, { isOlder })
+  const loadMessages = useCallback(async ({ msgLoadedTimeStamp, last_loaded_at, isOlder, isRefreshing = false }) => {
+    if (!isRefreshing && savedMsgs && savedMsgs?.length > 0 && !last_loaded_at) {
+      setMessages(dedupeMessages(savedMsgs));
+      return;
     }
 
     const { data, error } = await supabase
@@ -378,30 +443,19 @@ export function useDirectChat({ topic, meId, peerId }) {
         _limit: 100
       });
 
-    if (!error) {
+    if (!error && data) {
       if (data.length === 0) setCanLoadMoreMsgs(false)
-      afterMsgsLoaded(data, { isOlder })
-      return
+      const normalized = [...data].reverse();
+      setMessages(prev => {
+        if (isRefreshing) return normalized;
+        return dedupeMessages(isOlder ? [...normalized, ...prev] : [...prev, ...normalized]);
+      });
     }
-    console.log(error)
-  }, [meId, peerId, topic]);
+  }, [meId, peerId, rpcName, savedMsgs]);
 
-  const afterMsgsLoaded = (_msgs, { isOlder = false } = {}) => {
-    const msgs = [..._msgs].reverse(); // normalize to ASC
-    setMessages((prev) =>
-      dedupeMessages(
-        isOlder
-          ? [...msgs, ...(prev || [])]
-          : [...(prev || []), ...msgs]
-      )
-    );
-  };
+  const setup = useCallback(({ topic, meId, peerId }) => {
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
 
-  useEffect(() => {
-    if (!meId || !topic) return;
-
-    const msgLoadedTimeStamp = new Date().toISOString()
-    
     const channel = supabase.channel(topic, {
       config: { broadcast: { self: true, ack: true }, presence: { key: meId } },
     });
@@ -417,7 +471,7 @@ export function useDirectChat({ topic, meId, peerId }) {
     channel.on('broadcast', { event: 'updateMsg' }, (payload) => {
       const msg = payload.payload
       setMessages((prev) => replaceOptimisticMessages(prev || [], msg));
-    })    
+    })
 
     channel.on('broadcast', { event: 'messageRead' }, (payload) => {
       const msg = payload.payload
@@ -428,8 +482,8 @@ export function useDirectChat({ topic, meId, peerId }) {
       const msgsIds = payload.payload?.msgsIds
       const read_at = payload.payload?.read_at
       setMessages((prev) => {
-          const idSet = new Set(msgsIds);
-          return prev.map(m => idSet.has(m.id) ? { ...m, read_at } : m);
+        const idSet = new Set(msgsIds);
+        return prev.map(m => idSet.has(m.id) ? { ...m, read_at } : m);
       });
     })
 
@@ -449,20 +503,20 @@ export function useDirectChat({ topic, meId, peerId }) {
       setOnlineUsers(Object.keys(presenceState));
     });
 
-    // Postgres changes for the current thread
     channel.on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bookings_chats',
-          filter: `from_user=eq.${peerId}`,
-        },
-        (payload) => {
-          if (payload.new && payload.new.to_user === meId) {
-            setMessages((prev) => replaceOptimisticMessages(prev || [], payload.new));
-          }
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'bookings_chats',
+        filter: `from_user=eq.${peerId}`,
+      },
+      (payload) => {
+        if (payload.new && payload.new.to_user === meId) {
+          setMessages((prev) => replaceOptimisticMessages(prev || [], payload.new));
+          onMsgReceived(payload.new);
         }
+      }
     );
 
     channel.subscribe(async (subStatus) => {
@@ -471,28 +525,45 @@ export function useDirectChat({ topic, meId, peerId }) {
         channel.send({
           type: 'broadcast',
           event: 'messagesLoaded',
-          payload: { by_id: meId, timestamp: msgLoadedTimeStamp }
+          payload: { by_id: meId, timestamp: new Date().toISOString() }
         })
       }
     });
+  }, [onMsgReceived, onMsgRead, onMsgsLoaded]);
 
+  useEffect(() => {
+    if (!meId || !topic) return;
+
+    const msgLoadedTimeStamp = new Date().toISOString()
     loadMessages({ msgLoadedTimeStamp });
+    setup({ topic, meId, peerId });
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     };
   }, [meId, topic, peerId]);
 
   useEffect(() => {
     msgsRef.current = messages
-  }, [messages])
+    if (savedMsgs && areMessagesEqual(messages, savedMsgs)) return;
+    dispatch(setChannelIds({ channelId: topic, messages }))
+  }, [messages, topic, dispatch, savedMsgs])
 
-  const refreshConnection = () => {
-    if (channelRef.current) supabase.removeChannel(channelRef.current);
-    setStatus('connecting');
-    // useEffect will re-run if we toggle a state, but here we can just wait for cleanup or trigger manual setup if needed.
-    // For simplicity, we can rely on the meId/topic dependency.
+  const refreshConnection = async () => {
+    try {
+      dispatch(subtleLoadStart('Refreshing chat...'))
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      setStatus('connecting');
+      const msgLoadedTimeStamp = new Date().toISOString()
+      setup({ topic, meId, peerId });
+      await loadMessages({ msgLoadedTimeStamp, isRefreshing: true });
+
+    } catch (error) {
+      console.log(error)
+    } finally {
+      dispatch(subtleLoadStop())
+    }
   }
 
   return {

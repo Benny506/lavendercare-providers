@@ -8,7 +8,7 @@ const ChatContext = createContext();
 export const ChatProvider = ({ children }) => {
     const profile = useSelector(state => getUserDetailsState(state).profile);
     const meId = profile?.id;
-    
+
     const [unreadCount, setUnreadCount] = useState(0);
     const [activeChats, setActiveChats] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -39,6 +39,7 @@ export const ChatProvider = ({ children }) => {
             }
         } catch (error) {
             console.error("Error fetching chat summaries:", error);
+
         } finally {
             setLoading(false);
             if (isManual) setRefreshing(false);

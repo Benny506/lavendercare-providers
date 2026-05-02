@@ -20,6 +20,7 @@ import FailedMsgModal from "./auxiliary/FailedMsgModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useAudioRecorder } from "@/hooks/chatHooks/useAudioRecorder";
 import { dmTopic } from "@/hooks/chatHooks/dm";
+import { EMAIL_NOTIFY_MOTHER } from "@/constants/emailTemplates";
 
 
 
@@ -47,10 +48,10 @@ export default function UserChat() {
     const [recordingDuration, setRecordingDuration] = useState(0); // seconds
 
     const {
-        status, messages, sendMessage, onlineUsers,
+        status, messages, onlineUsers,
         canLoadMoreMsgs, loadMessages, bulkMsgsRead, refreshConnection,
         sendTempMedia, updateTempMedia, retrySend, deleteMessage,
-        cancelRetrySend
+        cancelRetrySend, sendMessage
     } = useDirectChat({ topic: dmTopic(meId, peerId), meId, peerId });
 
     const peerOnline = onlineUsers.includes(peerId)
@@ -60,6 +61,9 @@ export default function UserChat() {
             toast.info("Unable to locate chat")
             navigate(-1)
             return;
+
+        } else {
+            refreshConnection()
         }
     }, [])
 
@@ -124,7 +128,7 @@ export default function UserChat() {
         // }
 
         if (!input.trim()) return;
-        sendMessage({ text: input, toUser: peerId });
+        sendMessage({ text: input, toUser: peerId, user_profile: user });
         setInput('');
     };
 
@@ -132,7 +136,7 @@ export default function UserChat() {
         const { file_type, message, id } = msg
 
         if (file_type === 'text' || (file_type !== 'text' && !typeof message !== 'object')) {
-            sendMessage({ text: message, fileType: file_type, toUser: peerId, oldMsgId: id });
+            sendMessage({ text: message, fileType: file_type, toUser: peerId, oldMsgId: id, user_profile: user });
 
         } else {
             retrySend({ msgId: msg?.id })
@@ -154,6 +158,7 @@ export default function UserChat() {
                         fileType: file_type,
                         toUser: peerId,
                         oldMsgId: id,
+                        user_profile: user
                     });
                 })
                 .catch(error => {
@@ -168,27 +173,31 @@ export default function UserChat() {
         try {
             dispatch(appLoadStart())
 
-            const { data, error } = await supabase.from('user_profiles').select().single().eq('id', peerId)
+            const { data: customerEmail, error: customerEmailError } = await supabase.rpc('get_user_email', { p_user_id: user?.id });
 
-            if (error) {
-                console.log(error)
-                throw new Error()
-            }
+            if (customerEmailError) throw customerEmailError;
 
-            await sendNotifications({
-                tokens: [data?.notification_token],
-                // sound: null,
-                title: `Incoming message from lavendercare provider`,
-                body: `New message detected`,
-                data: {}
+            if (!customerEmail) throw new Error("User Not Found!");
+
+            const logoUrl = `https://tzsbbbxpdlupybfrgdbs.supabase.co/storage/v1/object/public/public_assets/logo.svg`;
+            const htmlContent = EMAIL_NOTIFY_MOTHER
+                .replace("{{name}}", user?.name || "Mother")
+                .replace("{{logoUrl}}", logoUrl);
+
+            await supabase.functions.invoke('send-patient-email', {
+                body: {
+                    toEmail: customerEmail,
+                    patientName: user?.name || "Mother",
+                    subject: "Chat Request from LavenderCare",
+                    htmlContent: htmlContent
+                }
             });
 
-            toast.success("Mother notified!")
+            toast.success("Mother notified via and email!")
 
         } catch (error) {
             console.log(error)
-            toast.error("Error notifying mother. Messages have been sent though, she can view them on her lavendercare app")
-
+            toast.error("Error notifying mother. Messages have been sent though, she can view them on her app")
         } finally {
             dispatch(appLoadStop())
         }
@@ -265,7 +274,8 @@ export default function UserChat() {
                     msgObj: {
                         ...msg,
                         message: uploadedFile
-                    }
+                    },
+                    user_profile: user
                 })
             })
             .catch(err => {
@@ -277,7 +287,8 @@ export default function UserChat() {
                     msgObj: {
                         ...msg,
                         message: null
-                    }
+                    },
+                    user_profile: user
                 })
             })
     }
@@ -372,7 +383,8 @@ export default function UserChat() {
                     msgObj: {
                         ...msg,
                         message: uploadedFile
-                    }
+                    },
+                    user_profile: user
                 })
             })
             .catch(err => {
@@ -383,7 +395,8 @@ export default function UserChat() {
                     msgObj: {
                         ...msg,
                         message: uploadedFile
-                    }
+                    },
+                    user_profile: user
                 })
             })
     };
@@ -409,7 +422,7 @@ export default function UserChat() {
                                 <div className="p-4 flex-wrap gap-2 border-b border-gray-200 flex justify-between items-center bg-white">
                                     <div className="flex items-center gap-3">
                                         <ProfileImg
-                                            profile_img={getPublicImageUrl({ path: user?.profile_img })}
+                                            profile_img={getPublicImageUrl({ path: user?.profile_img, bucket_name: 'user_profiles' })}
                                             name={user?.name}
                                         />
                                         <div>
@@ -422,6 +435,13 @@ export default function UserChat() {
 
 
                                     <div className="flex items-center justify-end gap-3">
+                                        <button
+                                            onClick={refreshConnection}
+                                            className="text-sm bg-purple-600 hover:bg-purple-700 text-white cursor-pointer rounded-lg px-3 py-1 flex items-center gap-2"
+                                        >
+                                            <RotateCw size={14} />
+                                            Refresh Chat
+                                        </button>
                                         <button
                                             onClick={notifyMother}
                                             className="text-sm bg-purple-600 hover:bg-purple-700 text-white cursor-pointer rounded-lg px-3 py-1"
