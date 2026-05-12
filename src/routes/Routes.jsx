@@ -55,7 +55,7 @@ const AppRoutes = () => {
           <Route index element={<Dashboard />} />
           <Route path="services" element={<Services />} />
           <Route path="service/setup" element={<ServiceSetup />} />
-          <Route path="services/service" element={<ServiceDetails />} />
+          {/* <Route path="services/service" element={<ServiceDetails />} /> */}
 
           <Route path="bookings" element={<Bookings />} />
           <Route path="bookings/booking" element={<BookingDetails />} />

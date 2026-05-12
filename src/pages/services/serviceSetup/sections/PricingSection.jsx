@@ -4,14 +4,21 @@ import Card from "@/components/ui/Card";
 import { formatNumberWithCommas, secondsToLabel } from "@/lib/utils";
 
 const PricingSection = ({ serviceTypes, openServiceTypeModal, setServiceTypes, scheduling_mode }) => {
-    
-    const formatDuration = (seconds) => {
-        if (!seconds) return "0s";
-        if (seconds % 86400 === 0) {
-            const days = seconds / 86400;
-            return `${days} ${days === 1 ? 'day' : 'days'}`;
-        }
-        return secondsToLabel({ seconds });
+
+    const formatDuration = (totalSeconds) => {
+        if (!totalSeconds) return "0s";
+
+        const days = Math.floor(totalSeconds / 86400);
+        const remainingSecondsAfterDays = totalSeconds % 86400;
+        const hours = Math.floor(remainingSecondsAfterDays / 3600);
+        const minutes = Math.floor((remainingSecondsAfterDays % 3600) / 60);
+
+        const parts = [];
+        if (days > 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+        if (hours > 0) parts.push(`${hours} ${hours === 1 ? 'hr' : 'hrs'}`);
+        if (minutes > 0) parts.push(`${minutes} ${minutes === 1 ? 'min' : 'mins'}`);
+
+        return parts.join(' ') || "0s";
     };
 
     const getModeLabel = (type) => {

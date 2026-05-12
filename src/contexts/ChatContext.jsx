@@ -19,22 +19,15 @@ export const ChatProvider = ({ children }) => {
         if (isManual) setRefreshing(true);
 
         try {
-            // 1. Fetch unread count
-            const { count, error: countError } = await supabase
-                .from('bookings_chats')
-                .select('*', { count: 'exact', head: true })
-                .eq('to_user', meId)
-                .is('read_at', null);
-
-            if (!countError) setUnreadCount(count || 0);
-
-            // 2. Fetch peer-to-peer chat list
+            // 1. Fetch peer-to-peer chat list
             const { data: latestMsgs, error: msgsError } = await supabase
                 .rpc('get_provider_chat_list', { p_provider_id: meId });
 
-            if (!msgsError) {
-                setActiveChats(latestMsgs || []);
-            } else {
+            if (!msgsError && latestMsgs) {
+                setActiveChats(latestMsgs);
+                const totalUnread = latestMsgs.reduce((acc, chat) => acc + (chat.unread_count || 0), 0);
+                setUnreadCount(totalUnread);
+            } else if (msgsError) {
                 console.error("msgsError", msgsError);
             }
         } catch (error) {
@@ -61,20 +54,8 @@ export const ChatProvider = ({ children }) => {
                 {
                     event: '*',
                     schema: 'public',
-                    table: 'bookings_chats',
-                    filter: `to_user=eq.${meId}`
-                },
-                () => {
-                    fetchChatSummaries();
-                }
-            )
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'bookings_chats',
-                    filter: `from_user=eq.${meId}`
+                    table: 'provider_user_conversations',
+                    filter: `provider_id=eq.${meId}`
                 },
                 () => {
                     fetchChatSummaries();

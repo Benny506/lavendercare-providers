@@ -5,6 +5,7 @@ import { useSelector } from "react-redux"
 import { Icon } from "@iconify/react"
 import { Dot } from "lucide-react"
 import { toast } from "react-toastify"
+import supabase from "@/database/dbInit"
 import BookingSummary from "../mothers/auxiliary/BookingSummary"
 
 import { Badge } from "@/components/ui/badge"
@@ -38,12 +39,12 @@ const BookingDetails = () => {
     const { state } = useLocation()
     const booking_id = state?.booking_id
 
-    const { bookings, services } = useSelector(getUserDetailsState)
-
+    const { bookings, services, profile } = useSelector(getUserDetailsState)
     const [booking, setBooking] = useState(null)
     const [service, setService] = useState(null)
     const [timerStr, setTimerStr] = useState("")
     const [showSummary, setShowSummary] = useState(false)
+    const [isStartingChat, setIsStartingChat] = useState(false)
 
     /* ------------------ Fetch Booking ------------------ */
 
@@ -79,6 +80,35 @@ const BookingDetails = () => {
 
         return () => clearInterval(interval)
     }, [booking])
+
+    const handleBeginChat = async () => {
+        if (isStartingChat) return
+        
+        try {
+            setIsStartingChat(true)
+            const { data, error } = await supabase.rpc('get_or_create_conversation', {
+                p_my_id: profile.id,
+                p_peer_id: booking.user_profile.id
+            })
+
+            if (error) throw error
+
+            const conv = data && data.length > 0 ? data[0] : null
+            if (!conv) throw new Error("Could not initialize conversation")
+
+            navigate('/mothers/single-mother/booking-chat', { 
+                state: { 
+                    conversation_id: conv.conversation_id, 
+                    user: booking.user_profile 
+                } 
+            })
+        } catch (error) {
+            console.error(error)
+            toast.error(error.message || "Error starting chat session")
+        } finally {
+            setIsStartingChat(false)
+        }
+    }
 
     if (!booking || !service) return null
 
@@ -145,9 +175,15 @@ const BookingDetails = () => {
                     </div>
 
                     <div className="flex items-center justify-end gap-2">
-                        <Button onClick={() => navigate('/mothers/single-mother/booking-chat', { state: { bookingInfo: booking, user: booking.user_profile } })} size="sm">
-                            Chat
-                        </Button>
+                        {booking.is_paid && (
+                            <Button 
+                                onClick={handleBeginChat} 
+                                size="sm"
+                                disabled={isStartingChat}
+                            >
+                                {isStartingChat ? 'Connecting...' : 'Chat'}
+                            </Button>
+                        )}
                     </div>
                 </div>
             </motion.div>

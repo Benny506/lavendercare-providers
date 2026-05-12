@@ -166,21 +166,12 @@ export default function ServiceDetails() {
                 className="border rounded-xl p-4 hover:shadow transition"
               >
                 <div className="flex justify-between items-start mb-3">
-                  <div className="text-sm space-y-1 text-gray-700">
-                    {(!scheduling_mode || scheduling_mode === 'instant') ? (
+                    <div className="text-sm space-y-1 text-gray-700">
                       <p>Duration: {secondsToLabel({ seconds: t.duration })}</p>
-                    ) : (
-                      <>
-                        <p>Min Turnaround: {secondsToLabel({ seconds: t.duration })}</p>
-                        {t.max_duration > 0 && (
-                          <p>Max Duration: {secondsToLabel({ seconds: t.max_duration })}</p>
-                        )}
-                      </>
-                    )}
-                    <p>
-                      Price: {t.currency} {formatNumberWithCommas(t.price)}
-                    </p>
-                  </div>
+                      <p>
+                        Price: {t.currency} {formatNumberWithCommas(t.price)}
+                      </p>
+                    </div>
                   <Badge variant="outline">
                     {t.is_virtual ? "Virtual" : "Physical"}
                   </Badge>

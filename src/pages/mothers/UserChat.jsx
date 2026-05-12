@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Paperclip, Send, Smile, Mic, ClockFading, MessageCircleWarning, Check, CheckCheck, RotateCw, Delete, Trash } from "lucide-react";
+import { LayoutGrid, Paperclip, Send, Smile, Mic, ClockFading, MessageCircleWarning, Check, CheckCheck, RotateCw, Delete, Trash } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { getUserDetailsState } from "@/redux/slices/userDetailsSlice";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -21,6 +21,9 @@ import ConfirmModal from "@/components/ConfirmModal";
 import { useAudioRecorder } from "@/hooks/chatHooks/useAudioRecorder";
 import { dmTopic } from "@/hooks/chatHooks/dm";
 import { EMAIL_NOTIFY_MOTHER } from "@/constants/emailTemplates";
+import ServicePicker from "./auxiliary/ServicePicker";
+import ServiceCard from "./auxiliary/ServiceCard";
+import useApiReqs from "@/hooks/useApiReqs";
 
 
 
@@ -31,8 +34,11 @@ export default function UserChat() {
 
     const { state } = useLocation()
     const user = state?.user
+    const conversation_id = state?.conversation_id
 
     const profile = useSelector(state => getUserDetailsState(state).profile)
+    const services = useSelector(state => getUserDetailsState(state).services)
+    const { getServices } = useApiReqs()
 
     const topRef = useRef()
     const bottomRef = useRef(null)
@@ -44,6 +50,7 @@ export default function UserChat() {
     const [input, setInput] = useState("");
     const [failedMsgModal, setFailedMsgModal] = useState({ visible: false, hide: null })
     const [confirmDelete, setConfirmDelete] = useState({ visible: false, hide: null })
+    const [showServicePicker, setShowServicePicker] = useState(false);
 
     const [recordingDuration, setRecordingDuration] = useState(0); // seconds
 
@@ -52,18 +59,24 @@ export default function UserChat() {
         canLoadMoreMsgs, loadMessages, bulkMsgsRead, refreshConnection,
         sendTempMedia, updateTempMedia, retrySend, deleteMessage,
         cancelRetrySend, sendMessage
-    } = useDirectChat({ topic: dmTopic(meId, peerId), meId, peerId });
+    } = useDirectChat({ 
+        topic: dmTopic(meId, peerId), 
+        meId, 
+        peerId,
+        dbChannelId: conversation_id 
+    });
 
     const peerOnline = onlineUsers.includes(peerId)
 
     useEffect(() => {
-        if (!peerId) {
-            toast.info("Unable to locate chat")
+        if (!conversation_id) {
+            toast.info("Unable to locate chat session")
             navigate(-1)
             return;
 
         } else {
             refreshConnection()
+            getServices({})
         }
     }, [])
 
@@ -75,7 +88,7 @@ export default function UserChat() {
         }
     }, [messages]);
 
-    if (!peerId) {
+    if (!conversation_id) {
         return <></>
     }
 
@@ -132,10 +145,21 @@ export default function UserChat() {
         setInput('');
     };
 
+    const handleServiceSelect = (service) => {
+        setShowServicePicker(false);
+        const serviceData = JSON.stringify(service);
+        sendMessage({ 
+            text: serviceData, 
+            fileType: 'service', 
+            toUser: peerId, 
+            user_profile: user 
+        });
+    };
+
     const retry = ({ msg }) => {
         const { file_type, message, id } = msg
 
-        if (file_type === 'text' || (file_type !== 'text' && !typeof message !== 'object')) {
+        if (file_type === 'text' || (file_type !== 'text' && typeof message !== 'object')) {
             sendMessage({ text: message, fileType: file_type, toUser: peerId, oldMsgId: id, user_profile: user });
 
         } else {
@@ -428,7 +452,7 @@ export default function UserChat() {
                                         <div>
                                             <h2 className="font-semibold text-gray-900">{user?.name}</h2>
                                             <p className="font-semibold text-[10px] text-primary-600 uppercase tracking-wider">
-                                                {peerOnline ? 'online' : onlineUsers.length > 0 ? 'offline' : ''}
+                                                {status === 'connecting' ? 'connecting...' : peerOnline ? 'online' : onlineUsers.length > 0 ? 'offline' : ''}
                                             </p>
                                         </div>
                                     </div>
@@ -536,6 +560,15 @@ export default function UserChat() {
                                                                                         align={iAmSender ? 'right' : 'left'}
                                                                                     />
                                                                                 </div>
+                                                                            )
+                                                                            :
+                                                                        file_type === 'service'
+                                                                            ?
+                                                                            (
+                                                                                <ServiceCard 
+                                                                                    service={message} 
+                                                                                    iAmSender={iAmSender} 
+                                                                                />
                                                                             )
                                                                             :
                                                                             (
@@ -668,14 +701,23 @@ export default function UserChat() {
                                                                     className="w-full px-3 py-1 rounded-md bg-gray-50 border-gray-200 whitespace-pre-wrap"
                                                                 />
                                                             </div>
-                                                            <Button
-                                                                onClick={() => fileRef?.current?.click?.()}
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                className="h-10 w-10 p-0 rounded-full hover:bg-gray-100"
-                                                            >
-                                                                <Paperclip className="w-4 h-4 text-gray-500" />
-                                                            </Button>
+                                                                <Button
+                                                                    onClick={() => setShowServicePicker(true)}
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-10 w-10 p-0 rounded-full hover:bg-gray-100"
+                                                                    title="Reference Service"
+                                                                >
+                                                                    <LayoutGrid className="w-4 h-4 text-gray-500" />
+                                                                </Button>
+                                                                <Button
+                                                                    onClick={() => fileRef?.current?.click?.()}
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    className="h-10 w-10 p-0 rounded-full hover:bg-gray-100"
+                                                                >
+                                                                    <Paperclip className="w-4 h-4 text-gray-500" />
+                                                                </Button>
                                                             {
                                                                 input.trim().length > 0
                                                                     ?
@@ -741,6 +783,13 @@ export default function UserChat() {
                         msg: 'This action cannot be undone!'
                     }
                 }}
+            />
+
+            <ServicePicker 
+                isOpen={showServicePicker}
+                onClose={() => setShowServicePicker(false)}
+                services={services}
+                onSelect={handleServiceSelect}
             />
 
         </div>

@@ -33,12 +33,14 @@ const ServiceType = ({
                             type_name: yup.string().required("Give this tier a name (e.g. Basic Session)"),
                             price: yup.number().required("How much do you charge?").min(1, "Price must be at least 1"),
                             duration: yup.number().required("How long is this session/shift?").min(1, "Must have a duration"),
-                            max_duration: isLogistics 
-                                ? yup.number().required("When will it be ready?").min(1, "Must specify a return window")
-                                : yup.number(),
-                        }).test('program-min-days', 'Programs must be at least 2 days long', function(values) {
-                            if (isProgram && values.duration < 2 * 24 * 60 * 60) {
-                                return this.createError({ path: 'duration', message: 'Programs must be at least 2 days' });
+                        }).test('program-min-days', 'Programs must be at least 1 day long', function(values) {
+                            if (isProgram && values.duration < 1 * 24 * 60 * 60) {
+                                return this.createError({ path: 'duration', message: 'Programs must be at least 1 day' });
+                            }
+                            return true;
+                        }).test('instant-max-hrs', 'Instant sessions cannot exceed 24 hours', function(values) {
+                            if (isInstant && values.duration >= 24 * 60 * 60) {
+                                return this.createError({ path: 'duration', message: 'Instant sessions must be less than 24 hours' });
                             }
                             return true;
                         })
@@ -47,9 +49,6 @@ const ServiceType = ({
                         type_name: info?.type_name || "",
                         price: info?.price || info?.fee || "",
                         duration: info?.duration || "", // In seconds
-                        max_duration: info?.max_duration || 0,
-                        min_turnaround: info?.min_turnaround || 0,
-                        buffer_time: info?.buffer_time || 0,
                         currency: info?.currency || "NGN",
                         is_virtual: is_virtual,
                     }}
@@ -80,7 +79,7 @@ const ServiceType = ({
                                     <Info className="text-primary-500 shrink-0 mt-0.5" size={18} />
                                     <p className="text-xs text-primary-800 leading-relaxed">
                                         {isInstant && "Instant sessions are 1-on-1 virtual calls. Mothers book these for immediate help."}
-                                        {isProgram && "Programs are long-term commitments (at least 2 days). Perfect for specialized care packages."}
+                                        {isProgram && "Programs are long-term commitments (at least 1 day). Perfect for specialized care packages."}
                                         {isLogistics && "For logistics, mothers want to know how soon they'll get their items back."}
                                         {isBlock && "Blocks allow mothers to book you for a set number of hours or days."}
                                     </p>
@@ -105,37 +104,25 @@ const ServiceType = ({
                                     </ErrorMessage>
                                 </div>
 
-                                {/* Duration Picker */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-gray-700">
-                                        {isInstant ? "Session Length" : isProgram ? "Program Length" : "Shift Duration"}
+                                        {isInstant ? "Session Length" : isProgram ? "Program Length" : isLogistics ? "Delivery Window" : "Shift Duration"}
                                     </label>
                                     <DurationPicker
                                         value={values.duration}
                                         onChange={(val) => setFieldValue("duration", val)}
-                                        unit={isProgram ? "days" : "hours"}
+                                        allowedUnits={
+                                            isInstant ? ["hours"] :
+                                            isProgram ? ["days"] :
+                                            ["hours", "days"]
+                                        }
                                         label={null} // Label is handled by parent
                                     />
+                                    {isLogistics && <p className="text-xs text-gray-500 italic mt-1">When should the mother expect their items back?</p>}
                                     <ErrorMessage name="duration">
                                         {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
                                     </ErrorMessage>
                                 </div>
-
-                                {/* Logistics specific: Delivery window */}
-                                {isLogistics && (
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-gray-700">Delivery Window</label>
-                                        <DurationPicker
-                                            value={values.max_duration}
-                                            onChange={(val) => setFieldValue("max_duration", val)}
-                                            label={null}
-                                        />
-                                        <p className="text-xs text-gray-500 italic mt-1">When should the mother expect their items back?</p>
-                                        <ErrorMessage name="max_duration">
-                                            {errorMsg => <ErrorMsg1 errorMsg={errorMsg} />}
-                                        </ErrorMessage>
-                                    </div>
-                                )}
 
                                 {/* Pricing */}
                                 <div className="space-y-2">

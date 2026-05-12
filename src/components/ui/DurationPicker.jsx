@@ -4,10 +4,12 @@ const DurationPicker = ({
     value = 0, // in seconds
     onChange,
     unit: initialUnit = "hours", // "hours" | "days"
+    allowedUnits = ["hours", "days"],
     label,
     error
 }) => {
-    const [unit, setUnit] = useState(initialUnit);
+    const defaultUnit = allowedUnits.includes(initialUnit) ? initialUnit : allowedUnits[0];
+    const [unit, setUnit] = useState(defaultUnit);
 
     // Convert seconds to readable values
     const hours = Math.floor(value / 3600);
@@ -34,22 +36,28 @@ const DurationPicker = ({
                 {label && <label className="block text-sm font-bold text-gray-700">{label}</label>}
 
                 {/* Unit Toggle */}
-                <div className="flex bg-gray-100 p-1 rounded-xl">
-                    <button
-                        type="button"
-                        onClick={() => setUnit("hours")}
-                        className={`px-3 py-1 text-xs font-bold rounded-md transition ${unit === "hours" ? "bg-white shadow-sm text-primary-600" : "text-gray-500 hover:text-gray-700"}`}
-                    >
-                        Hours
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setUnit("days")}
-                        className={`px-3 py-1 text-xs font-bold rounded-md transition ${unit === "days" ? "bg-white shadow-sm text-primary-600" : "text-gray-500 hover:text-gray-700"}`}
-                    >
-                        Days
-                    </button>
-                </div>
+                {allowedUnits.length > 1 && (
+                    <div className="flex bg-gray-100 p-1 rounded-xl">
+                        {allowedUnits.includes("hours") && (
+                            <button
+                                type="button"
+                                onClick={() => setUnit("hours")}
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition ${unit === "hours" ? "bg-white shadow-sm text-primary-600" : "text-gray-500 hover:text-gray-700"}`}
+                            >
+                                Hours
+                            </button>
+                        )}
+                        {allowedUnits.includes("days") && (
+                            <button
+                                type="button"
+                                onClick={() => setUnit("days")}
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition ${unit === "days" ? "bg-white shadow-sm text-primary-600" : "text-gray-500 hover:text-gray-700"}`}
+                            >
+                                Days
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -95,7 +103,7 @@ const DurationPicker = ({
                         <input
                             type="number"
                             min="1"
-                            value={days || ""}
+                            value={days === 0 ? "" : days}
                             placeholder="e.g. 3"
                             onChange={(e) => handleDayChange(Number(e.target.value))}
                             className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none transition shadow-sm"

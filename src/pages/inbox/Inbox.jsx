@@ -5,7 +5,7 @@ import { getPublicImageUrl } from "@/lib/requestApi";
 import { formatDate1, isoToAMPM, isToday, isYesterday } from "@/lib/utils";
 import ProfileImg from "@/components/ProfileImg";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, ChevronRight, RotateCw, Mic, Image as ImageIcon, Video } from "lucide-react";
+import { MessageSquare, ChevronRight, RotateCw, Mic, Image as ImageIcon, Video, LayoutGrid } from "lucide-react";
 
 const Inbox = () => {
     const navigate = useNavigate();
@@ -41,6 +41,8 @@ const Inbox = () => {
                 return <div className="flex items-center gap-1"><ImageIcon size={14} /> Image</div>;
             case 'video':
                 return <div className="flex items-center gap-1"><Video size={14} /> Video</div>;
+            case 'service':
+                return <div className="flex items-center gap-1"><LayoutGrid size={14} /> Shared a service</div>;
             default:
                 return message;
         }
@@ -85,7 +87,8 @@ const Inbox = () => {
                             unread_count,
                             peer_id,
                             peer_name,
-                            peer_img
+                            peer_img,
+                            conversation_id
                         } = chat;
 
                         const timeDisplay = isToday(last_message_at) 
@@ -97,6 +100,7 @@ const Inbox = () => {
                         const handleOpenChat = () => {
                             navigate("/mothers/single-mother/booking-chat", {
                                 state: {
+                                    conversation_id,
                                     user: { id: peer_id, name: peer_name, profile_img: peer_img }
                                 }
                             });

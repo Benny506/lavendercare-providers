@@ -244,7 +244,7 @@ export default function useApiReqs() {
                 .from("services")
                 .select(`
                     *,
-                    types: service_types ( * )    
+                    service_types ( * )
                 `)
                 .single()
                 .eq("id", service_id)
@@ -331,7 +331,7 @@ export default function useApiReqs() {
 
             const updatedService = {
                 ...(service || {}),
-                types: [data, ...(service?.types || [])]
+                service_types: [data, ...(service?.service_types || [])]
             }
 
             const updatedServices = services?.map(s => {
@@ -379,7 +379,7 @@ export default function useApiReqs() {
 
             const updatedService = {
                 ...(service || {}),
-                types: (service?.types || [])?.map(t => {
+                service_types: (service?.service_types || [])?.map(t => {
                     if (t?.id === type_id) {
                         return data
                     }
@@ -430,7 +430,7 @@ export default function useApiReqs() {
 
             const updatedService = {
                 ...(service || {}),
-                types: (service?.types || [])?.filter(t => t?.id !== type_id)
+                service_types: (service?.service_types || [])?.filter(t => t?.id !== type_id)
             }
 
             const updatedServices = services?.map(s => {

@@ -75,7 +75,7 @@ function areMessagesEqual(a, b) {
   return true;
 }
 
-export function useDirectChat({ topic, meId, peerId }) {
+export function useDirectChat({ topic, meId, peerId, dbChannelId }) {
 
   const dispatch = useDispatch()
 
@@ -233,7 +233,8 @@ export function useDirectChat({ topic, meId, peerId }) {
   const sendMessage = useCallback(
     async ({ text, toUser, user_profile, fileType, duration, oldMsgId }) => {
       try {
-        if (!text?.trim()) return;
+        if (!text) return;
+        if (typeof text === 'string' && !text.trim()) return;
 
         const tempId = uuidv4();
         const optimisticMessage = {
@@ -250,7 +251,11 @@ export function useDirectChat({ topic, meId, peerId }) {
           duration: duration || null
         };
 
-        const realMessage = { ...optimisticMessage, chat_type: 'direct' }
+        const realMessage = { 
+          ...optimisticMessage, 
+          chat_type: 'direct',
+          conversation_id: dbChannelId
+        }
         delete realMessage.pending
         delete realMessage.failed
 
@@ -283,7 +288,7 @@ export function useDirectChat({ topic, meId, peerId }) {
           })
 
           notifyMother({
-            msg: text,
+            msg: fileType === 'service' ? 'Shared a service with you' : text,
             mother: user_profile,
             provider: profile
           })
@@ -436,7 +441,7 @@ export function useDirectChat({ topic, meId, peerId }) {
 
     const { data, error } = await supabase
       .rpc(rpcName, {
-        p_peer_id: peerId,
+        p_conversation_id: dbChannelId,
         p_my_id: meId,
         p_timestamp: msgLoadedTimeStamp,
         last_loaded_at,
@@ -509,10 +514,10 @@ export function useDirectChat({ topic, meId, peerId }) {
         event: '*',
         schema: 'public',
         table: 'bookings_chats',
-        filter: `from_user=eq.${peerId}`,
+        filter: `conversation_id=eq.${dbChannelId}`,
       },
       (payload) => {
-        if (payload.new && payload.new.to_user === meId) {
+        if (payload.new && payload.new.conversation_id === dbChannelId) {
           setMessages((prev) => replaceOptimisticMessages(prev || [], payload.new));
           onMsgReceived(payload.new);
         }
@@ -527,6 +532,7 @@ export function useDirectChat({ topic, meId, peerId }) {
           event: 'messagesLoaded',
           payload: { by_id: meId, timestamp: new Date().toISOString() }
         })
+        await channel.track({ online_at: new Date().toISOString() });
       }
     });
   }, [onMsgReceived, onMsgRead, onMsgsLoaded]);
